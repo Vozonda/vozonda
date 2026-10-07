@@ -7,6 +7,6 @@ never push to `main`. Rules for every run: see `AGENTS.md`, section "Cloud agent
 |---|---|---|
 | `issue-to-pr.md` | an issue gets the label `agent` | a PR that closes the issue |
 | `external-pr-review.md` | a PR opened by someone outside the org | a review comment |
-| `weekly-health.md` | Mondays 06:00 UTC | one PR (safe updates) and/or one issue |
-| `docs-sync.md` | Wednesdays 06:00 UTC | one PR with doc fixes, or nothing |
-| `launch-check.md` | Tuesdays and Fridays 06:00 UTC until launch | one status issue (updated, not duplicated) |
+
+Only work with real value runs here. Dependency and security alerts come from GitHub itself;
+docs are updated in the PR that changes the code.
