@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- digest: hosts no longer call themselves "Host A", chapter and fallback titles drop site suffixes (" - NASA Science", " | Site"), and the episode title is written from the script like for single episodes (#7)
 - script: surprise reactions ("Wait, really?", "Huh.") no longer follow a summary, a turn without a reason, another surprise, or land in the last two turns; the rhythm layer swaps them for a neutral back-channel (#3)
 
 ## [0.6.0] - 2026-10-04
