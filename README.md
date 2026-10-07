@@ -10,6 +10,21 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/Vozonda/vozonda/actions/workflows/ci.yml"><img src="https://github.com/Vozonda/vozonda/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/Vozonda/vozonda/releases"><img src="https://img.shields.io/github/v/release/Vozonda/vozonda?sort=semver" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-4a7300" alt="MIT licence"></a>
+  <a href="https://vozonda.com"><img src="https://img.shields.io/badge/website-vozonda.com-1a1815" alt="Website"></a>
+</p>
+
+<p align="center">
+  <strong><a href="https://vozonda.com/#listen">Listen to samples</a></strong> ·
+  <a href="https://vozonda.com/compare/">Compare</a> ·
+  <a href="https://vozonda.com/test/">Blind test</a> ·
+  <a href="https://vozonda.com/changelog/">Changelog</a>
+</p>
+
+
+<p align="center">
   <a href="#quickstart">Quickstart</a> •
   <a href="#the-name--brand-story">Brand Story</a> •
   <a href="#use-it-from-your-agent">Agent MCP</a> •
