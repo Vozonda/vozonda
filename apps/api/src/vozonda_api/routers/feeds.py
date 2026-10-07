@@ -442,6 +442,8 @@ async def feed_private_url(request: Request) -> dict:
 @router.get("/feed.xml", include_in_schema=False)
 async def feed(request: Request, key: str | None = None) -> Response:
     _require_feed_access(key)
+    if resolve_show_rss("default") != "1":
+        raise HTTPException(404, "not found")
     rows = _filter_rows_by_rss(_done_rows())
     return _render_feed(request, rows, self_path="/feed.xml", key=key)
 

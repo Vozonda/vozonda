@@ -386,6 +386,12 @@
   ]
   let dist = $state<DistributionMeta | null>(null)
   let distError = $state('')
+  // the default show only chooses between private and podcast apps (no nostr key of its own)
+  const MASTER_REACHES = REACHES.filter((r) => r.id === 'private' || r.id === 'apps').map((r) =>
+    r.id === 'private'
+      ? { ...r, help: 'no public feed: /feed.xml returns 404, so podcast apps that subscribed to it lose the show.' }
+      : r
+  )
   let reachBusy = $state<string | null>(null)
   let nostrStatus = $state<Record<string, NostrShowStatus>>({})
   let confirmNostr = $state<{ show: DistShow; reach: Reach } | null>(null)
@@ -1808,12 +1814,21 @@
                   onchange={(e) => set('show.description', e.currentTarget.value)}></textarea>
                 <span class="lab mono">distribution</span>
                 <div class="master-reach-row">
-                  <div class="seg reach-seg">
-                    <button type="button" class="sel fixed-seg-btn" disabled><Icon name="lock" size={12} /> podcast apps</button>
+                  <div class="seg reach-seg" role="radiogroup" aria-label="Distribution of the default show">
+                    {#each MASTER_REACHES as r (r.id)}
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={reach === r.id}
+                        class:sel={reach === r.id}
+                        disabled={reachBusy === show.slug}
+                        onclick={() => void applyReach(show, r.id)}
+                      >{r.label}</button>
+                    {/each}
                   </div>
-                  <span class="help-inline">fixed master feed for all unassigned episodes</span>
                 </div>
               </div>
+              <p class="help">{MASTER_REACHES.find((r) => r.id === reach)?.help}</p>
               <p class="help">name and author also go into every mp3, the player and the share page; category and description are for podcast apps.</p>
             {:else}
               <div class="show-fields">
@@ -3422,17 +3437,6 @@
     border: 1px dashed var(--green);
     color: var(--green);
     background: color-mix(in srgb, var(--green) 18%, transparent);
-    font-weight: 600;
-  }
-  .seg button.fixed-seg-btn:disabled {
-    cursor: default;
-    opacity: 1;
-    background: var(--green);
-    color: var(--paper);
-    border-color: var(--green);
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
     font-weight: 600;
   }
   .master-reach-row {

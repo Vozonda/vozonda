@@ -492,10 +492,7 @@ def resolve_show_rss(show_num: str) -> str:
     backfill meant to write '1' never ran, a NameError at import, and every existing
     show would have lost its feed). distribution.rss_default is the preset for NEW shows."""
     if show_num == "default":
-        val = get_setting("show.default.rss")
-        if val is None:
-            val = get_setting("show.rss")
-        return "0" if val == "0" else "1"
+        return "0" if get_setting("show.default.rss") == "0" else "1"
     return "0" if get_setting(f"show.{show_num}.rss") == "0" else "1"
 
 
