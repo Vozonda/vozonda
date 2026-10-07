@@ -21,6 +21,7 @@ def test_app_svelte_version_link():
     assert "rel=\"noopener\"" in src, "App.svelte version link must have rel=noopener"
     # Check the dev-link class is used
     assert 'class="dev-link"' in src, "App.svelte dev-link class must still be present"
+    assert ">v{meta.version}</a>" in src, "App.svelte version link text must be the version"
 
 
 def test_faq_screen_version_link():
@@ -29,6 +30,7 @@ def test_faq_screen_version_link():
     assert "target=\"_blank\"" in src, "FaqScreen.svelte version link must open in new tab"
     assert "rel=\"noopener\"" in src, "FaqScreen.svelte version link must have rel=noopener"
     assert 'class="dev-link"' in src, "FaqScreen.svelte dev-link class must still be present"
+    assert ">v{info.version}</a>" in src, "FaqScreen.svelte version link text must be the version"
 
 
 def test_no_dev_html_references_in_web():

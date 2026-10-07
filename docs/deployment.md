@@ -332,7 +332,7 @@ cd ~/vozonda
 ./scripts/verify.sh
 ```
 
-Runs: ruff → pytest → svelte-check → gen-dev-page → build. All must pass.
+Runs: ruff -> pytest -> svelte-check -> build. All must pass.
 
 ---
 
