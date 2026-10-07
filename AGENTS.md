@@ -2,7 +2,7 @@
 type: repo-contract
 scope: vozonda
 created: 2026-08-21
-updated: 2026-10-03
+updated: 2026-10-07
 ---
 
 # AGENTS.md - vozonda
@@ -103,6 +103,24 @@ A pre-push hook runs `verify.sh`; never bypass it (`--no-verify`) without saying
 message. Commit style `<scope>: <verb> <object>` (e.g. `web: add waveform seek`), pathspec-scoped
 (`git commit -- <paths>`), never `git add -A`. No Co-Authored-By trailers for GitHub-bound work.
 
+## Cloud sessions (Claude Code on the web) and GitHub
+
+GitHub `Vozonda/vozonda` is the main repo. Cloud sessions and routines follow these rules on top of
+everything above:
+
+- **Never push to `main`.** Work on a branch `claude/<short-topic>` and open a pull request. The
+  maintainer decides every merge.
+- **One topic per PR**, small enough to review in ten minutes. Link the issue (`Closes #N`).
+- **Prove it:** run before opening the PR and paste the result lines into the PR body:
+  `cd apps/api && uv sync --frozen --extra tts-kokoro --extra tts-piper --extra mcp && uv run ruff check src && uv run pytest -q`
+  and `cd apps/web && npm ci && npx svelte-check --threshold error && npm run build`.
+- **No GPU here.** Voice engines, local LLMs and real end-to-end runs happen on the maintainer's
+  machine. Mock them in tests; say in the PR what could not be checked in the cloud.
+- **Public repo hygiene:** `python3 scripts/public_scan.py` must pass. No private hosts, paths, names
+  or secrets; no AI attribution lines in commits or PRs (`.claude/settings.json` turns them off).
+- Routine prompts live in `.claude/routines/`. Internal planning docs (`docs/archive/`) exist only on
+  the maintainer machine; do not recreate them.
+
 ## Shared checkout (humans and non-fleet agents)
 
 Fleet agents work in their own git worktree and land through the runner; these rules are for
@@ -112,9 +130,8 @@ anyone editing the checkout directly.
    retry, never force.
 2. Small pathspec-scoped commits; `git status` first; never sweep another agent's files in.
 3. Broken WIP blocks everyone's pre-push hook: fix to green or announce it in
-   `docs/archive/internal/COORDINATION.md`.
-4. Claim hot files in `docs/archive/internal/COORDINATION.md` before touching them (append-only
-   entries, commit yours at once).
+   the coordination notes (maintainer machine only).
+4. Claim hot files in the coordination notes before touching them (maintainer machine only).
 5. Never stash others' files, `--force`, rewrite pushed history.
 6. Status flips need evidence (commit hash plus check output).
 
