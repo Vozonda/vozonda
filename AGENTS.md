@@ -103,12 +103,12 @@ A pre-push hook runs `verify.sh`; never bypass it (`--no-verify`) without saying
 message. Commit style `<scope>: <verb> <object>` (e.g. `web: add waveform seek`), pathspec-scoped
 (`git commit -- <paths>`), never `git add -A`. No Co-Authored-By trailers for GitHub-bound work.
 
-## Cloud sessions (Claude Code on the web) and GitHub
+## Cloud agents and GitHub
 
-GitHub `Vozonda/vozonda` is the main repo. Cloud sessions and routines follow these rules on top of
+GitHub `Vozonda/vozonda` is the main repo. Cloud agents and routines follow these rules on top of
 everything above:
 
-- **Never push to `main`.** Work on a branch `claude/<short-topic>` and open a pull request. The
+- **Never push to `main`.** Work on a branch `agent/<short-topic>` and open a pull request. The
   maintainer decides every merge.
 - **One topic per PR**, small enough to review in ten minutes. Link the issue (`Closes #N`).
 - **Prove it:** run before opening the PR and paste the result lines into the PR body:
@@ -117,8 +117,8 @@ everything above:
 - **No GPU here.** Voice engines, local LLMs and real end-to-end runs happen on the maintainer's
   machine. Mock them in tests; say in the PR what could not be checked in the cloud.
 - **Public repo hygiene:** `python3 scripts/public_scan.py` must pass. No private hosts, paths, names
-  or secrets; no AI attribution lines in commits or PRs (`.claude/settings.json` turns them off).
-- Routine prompts live in `.claude/routines/`. Internal planning docs (`docs/archive/`) exist only on
+  or secrets; no AI attribution lines in commits or PRs (the tool settings in `.claude/settings.json` turn them off).
+- Routine prompts live in `.agents/routines/`. Internal planning docs (`docs/archive/`) exist only on
   the maintainer machine; do not recreate them.
 
 ## Shared checkout (humans and non-fleet agents)

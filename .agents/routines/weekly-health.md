@@ -6,6 +6,6 @@ Weekly health check of Vozonda/vozonda (main). Follow AGENTS.md.
 3. Warnings: ruff (full repo scripts too), svelte-check warnings, Python DeprecationWarnings in the
    test output.
 4. If there are safe fixes (patch/minor updates without API changes, a flaky test with a clear
-   cause), make them on branch `claude/health-<yyyy-mm-dd>`, run all checks, open ONE PR.
+   cause), make them on branch `agent/health-<yyyy-mm-dd>`, run all checks, open ONE PR.
 5. Everything else goes into ONE issue titled `health <yyyy-mm-dd>` with a short table:
    item, severity, proposed action. If nothing is worth reporting, do nothing.

@@ -1,11 +1,11 @@
-# Routines (Claude Code on the web)
+# Routines (cloud agents)
 
 Each file is the prompt of one routine. The maintainer only decides (merge yes/no); routines
-never push to `main`. Rules for every session: see `AGENTS.md`, section "Cloud sessions".
+never push to `main`. Rules for every run: see `AGENTS.md`, section "Cloud agents and GitHub".
 
 | File | Trigger | Output |
 |---|---|---|
-| `issue-to-pr.md` | an issue gets the label `claude` | a PR that closes the issue |
+| `issue-to-pr.md` | an issue gets the label `agent` | a PR that closes the issue |
 | `external-pr-review.md` | a PR opened by someone outside the org | a review comment |
 | `weekly-health.md` | Mondays 06:00 UTC | one PR (safe updates) and/or one issue |
 | `docs-sync.md` | Wednesdays 06:00 UTC | one PR with doc fixes, or nothing |
