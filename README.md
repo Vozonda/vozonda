@@ -137,7 +137,7 @@ uploaded documents.
 
 ## Status
 
-Version 0.5.0. Built and used as a **single-user, local-first** app.
+Built and used as a **single-user, local-first** app. See the [Changelog](https://vozonda.com/changelog/) for release history and updates.
 
 - **Exposing it:** bind to localhost (default) or set `VOZONDA_TOKEN`; the
   hosted multi-user mode (Nostr login, per-user data, private feeds) is
