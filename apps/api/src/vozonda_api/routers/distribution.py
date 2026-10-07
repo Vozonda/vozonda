@@ -70,8 +70,9 @@ async def get_distribution(request: Request) -> dict:
     default_name = all_settings_dict.get("show.name") or ""
     if default_name:
         # the unnumbered default show: its episodes are in the master feed; no own key
-        shows.append({"slug": "default", "name": default_name, "rss": "1", "nostr": "0",
-                      "feed_url": f"{base}/feed.xml", "fixed": True})
+        default_rss = resolve_show_rss("default")
+        shows.append({"slug": "default", "name": default_name, "rss": default_rss, "nostr": "0",
+                      "feed_url": f"{base}/feed.xml" if default_rss == "1" else None, "fixed": True})
 
     # Directory help (static links)
     directory_help = {
@@ -102,6 +103,17 @@ async def put_show_rss(
     """Enable or disable RSS feed for a show. Requires write auth."""
     await _require_write_auth(authorization)
 
+    enabled = body.get("enabled")
+    if not isinstance(enabled, bool):
+        raise HTTPException(422, "enabled must be a boolean")
+    value = "1" if enabled else "0"
+
+    if slug == "default":
+        # the undeletable master show: private (feed 404) or podcast apps
+        set_setting("show.default.rss", value)
+        base = (env("PUBLIC_URL", "").strip() or str(request.base_url)).rstrip("/")
+        return {"slug": slug, "rss": value, "feed_url": f"{base}/feed.xml" if value == "1" else None}
+
     # Parse numeric index from slug (s1 -> 1, s2 -> 2, or bare number)
     show_num = slug.lstrip("s")
     try:
@@ -114,11 +126,6 @@ async def put_show_rss(
     if f"show.{idx}.name" not in all_settings_dict or not all_settings_dict.get(f"show.{idx}.name"):
         raise HTTPException(404, "show not found")
 
-    enabled = body.get("enabled")
-    if not isinstance(enabled, bool):
-        raise HTTPException(422, "enabled must be a boolean")
-
-    value = "1" if enabled else "0"
     try:
         set_setting(f"show.{idx}.rss", value)
     except ValueError as exc:
