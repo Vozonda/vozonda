@@ -25,7 +25,7 @@
 
 
 <p align="center">
-  <a href="#quickstart">Quickstart</a> •
+  <a href="docs/quickstart.md">Quickstart</a> •
   <a href="#the-name--brand-story">Brand Story</a> •
   <a href="#use-it-from-your-agent">Agent MCP</a> •
   <a href="#how-it-works">How It Works</a> •
@@ -38,13 +38,24 @@
 
 **Vozonda** unites two concepts: **voz** (*voice*) and **onda** (*wave*).
 
-Written sources become spoken dialogues: voices creating sound waves. You provide articles, PDFs, or research notes; Vozonda reads, structures, and synthesizes them into an engaging two-voice dialogue, published directly to your private RSS podcast feed or Nostr.
+Written sources become spoken audio: voices making waves. Give Vozonda articles, papers, PDFs,
+screenshots, YouTube videos, RSS feeds or your own notes, and it turns them into the show you want:
+
+- **Fourteen show formats:** a deep dive, a quick brief, a debate, a critique, a morning dispatch of
+  your feeds, a feature story, an explainer, a three-voice roundtable and more.
+- **One to three voices, or a single narrator**, in ten languages; it can translate your sources
+  into the language you want to hear.
+- **Watchlists** turn RSS feeds into a daily or weekly digest that fills your feed on its own.
+- **Every episode comes with** chapters, a transcript, takeaways, highlights and shareable clips;
+  read and fix the script before it is voiced.
+
+Episodes land in your private RSS podcast feed and, if you like, on Nostr.
 
 - **Self-hosted:** Runs on your own hardware with Docker. Voice generation runs on CPU by default with Kokoro, so no GPU is required.
 - **Your own RSS feed:** Episodes publish to a personal podcast feed with chapters and transcripts, compatible with any podcast player.
 - **No accounts:** No cloud logins, no telemetry, and no subscriptions. You keep full control of your data and model endpoints.
 
-Ready to try it? Follow the [Docker Quickstart](docs/quickstart.md) to generate your first episode in under 10 minutes.
+Ready to try it? Follow the [Docker Quickstart](docs/quickstart.md) to make your first episode.
 
 ## Use it from your agent
 
