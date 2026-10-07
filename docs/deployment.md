@@ -390,7 +390,9 @@ docker compose up -d
 
 ---
 
-## 9. Current Feature Set (v0.5.0)
+## 9. Current Feature Set
+
+See the [Changelog](https://vozonda.com/changelog/) for current releases and updates.
 
 - **Compose:** Paste URL or text → select style/format/voices/language → render
 - **Digest Mode (Phase 1):** Per-feed digest toggle, count select (2-5), "render digest now" button, chapter list on listen view, digest badge in library
