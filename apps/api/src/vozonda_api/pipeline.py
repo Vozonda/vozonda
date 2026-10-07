@@ -3167,10 +3167,14 @@ async def _run_from_body(
     host_names = _host_names(_voice_profile(store, job_id))
     # Use the passed title parameter (updated during extract) rather than
     # re-reading from the potentially stale job dict.
+    # A combined job's working title is its source titles joined with " + "
+    # (plus note text): the hosts must not get it as a title to say aloud.
+    # The final episode title still comes from the script below.
+    prompt_title = "" if n_sources else title
     if fmt == "narration":
         lines, description = await _narration_script(
             body, output_lang, src_lang, store, job_id,
-            host_names=host_names, title=title,
+            host_names=host_names, title=prompt_title,
         )
     else:
         lines, description = await _script(
@@ -3182,7 +3186,7 @@ async def _run_from_body(
             n_hosts=job_hosts,
             explicit=bool(job.get("explicit")),
             host_names=host_names,
-            title=title,
+            title=prompt_title,
             tts_engine=job.get("tts_engine") or "",
             emotion=job.get("emotion") or _voice_profile(store, job_id).get("emotion") or "",
             target_minutes=target_minutes,

@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - script: surprise reactions ("Wait, really?", "Huh.") no longer follow a summary, a turn without a reason, another surprise, or land in the last two turns; the rhythm layer swaps them for a neutral back-channel (#3)
+- script: a combined episode's script prompt no longer gets the joined source titles (or note text) as a title to say in the outro (#6)
 
 ## [0.6.0] - 2026-10-04
 
