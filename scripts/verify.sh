@@ -94,15 +94,6 @@ if violations:
 " || fail "TypeScript 'any' without suppression (add // ts-any-ok if intentional)"
 
 
-echo "// gen-dev-page"
-# Fleet agents run this gate inside their task scope; regenerating the tracked
-# dev.html there made every web task fail on a file it never touched
-# (VOZONDA-L1 eight times, LAZY-CATCH, 2026-09-24). Humans and CI still regenerate it.
-case "${SOVEREIGN_AGENT:-}" in
-  fleet-*) echo "  (skipped under the fleet: ${SOVEREIGN_AGENT})" ;;
-  *) python3 scripts/gen-dev-page.py || echo "[warn] gen-dev-page failed (kept old dev.html)" ;;
-esac
-
 echo "// build"
 (cd apps/web && npm run build >/dev/null) || fail build
 

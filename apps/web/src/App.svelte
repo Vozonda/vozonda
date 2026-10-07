@@ -1705,7 +1705,7 @@
         <button class="foot-link mono" onclick={openWatchlist}>watchlist</button>
       </nav>
       <div class="foot-meta mono tagline">
-        {#if meta}<span class="nobrk"><a href="/dev.html" class="dev-link">v{meta.version}</a> ·</span> {/if}<span class="nobrk">sovereign audio overview</span> · <span class="nobrk">nostr-native</span> · <span class="nobrk">multi-engine</span> · <span class="nobrk">open source</span>
+        {#if meta}<span class="nobrk"><a href="https://vozonda.com/changelog/" target="_blank" rel="noopener" class="dev-link">v{meta.version}</a> ·</span> {/if}<span class="nobrk">sovereign audio overview</span> · <span class="nobrk">nostr-native</span> · <span class="nobrk">multi-engine</span> · <span class="nobrk">open source</span>
       </div>
     </footer>
   </main>

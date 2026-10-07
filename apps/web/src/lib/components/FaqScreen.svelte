@@ -551,7 +551,7 @@
     <section id="version-data">
       <h2>Version & data</h2>
       <dl class="mono facts">
-        <div><dt>vozonda</dt><dd><a href="/dev.html" class="dev-link">v{info.version}</a> · git {info.git_rev}</dd></div>
+        <div><dt>vozonda</dt><dd><a href="https://vozonda.com/changelog/" target="_blank" rel="noopener" class="dev-link">v{info.version}</a> · git {info.git_rev}</dd></div>
         <div><dt>data</dt><dd>jobs, settings and audio live on your own disk (in docker: named volumes). Nothing is shared with 3rd-party ad networks or telemetry platforms.</dd></div>
       </dl>
     </section>

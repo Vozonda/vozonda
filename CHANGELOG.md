@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- the in-app dev page is replaced by the public changelog at vozonda.com/changelog/
+
 ### Fixed
 
 - digest: hosts no longer call themselves "Host A", chapter and fallback titles drop site suffixes (" - NASA Science", " | Site"), and the episode title is written from the script like for single episodes (#7)
