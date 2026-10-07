@@ -36,11 +36,11 @@ def test_security_has_required_sections() -> None:
 
 
 def test_security_no_email() -> None:
-    """SECURITY.md must not contain private email addresses (vozonda@proton.me allowed)."""
+    """SECURITY.md must not contain email addresses (reports go through GitHub security advisories)."""
     content = _read(SECURITY_MD)
     email_re = re.compile(r"\S+@\S+\.\S+")
     matches = [m.strip("*") for m in email_re.findall(content)]
-    unexpected = [m for m in matches if m != "vozonda@proton.me"]
+    unexpected = list(matches)
     assert unexpected == [], f"SECURITY.md must not contain unexpected email addresses, found: {unexpected}"
 
 
