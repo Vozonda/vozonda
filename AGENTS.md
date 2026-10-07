@@ -108,6 +108,9 @@ message. Commit style `<scope>: <verb> <object>` (e.g. `web: add waveform seek`)
 GitHub `Vozonda/vozonda` is the main repo. Cloud agents and routines follow these rules on top of
 everything above:
 
+- **Commit identity:** before the first commit run
+  `git config user.name cipherfoxie && git config user.email 271347478+cipherfoxie@users.noreply.github.com`.
+  No trailers that name a tool or a session (no `Co-Authored-By`, no `*-Session:` lines).
 - **Never push to `main`.** Work on a branch `agent/<short-topic>` and open a pull request. The
   maintainer decides every merge.
 - **One topic per PR**, small enough to review in ten minutes. Link the issue (`Closes #N`).
