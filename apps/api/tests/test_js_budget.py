@@ -26,6 +26,8 @@ DIST = WEB / "dist"
 
 def _build_web() -> None:
     """Run ``npm run build`` inside apps/web."""
+    if not (WEB / "node_modules").is_dir():
+        pytest.skip("web dependencies not installed (the CI web job runs svelte-check and the build)")
     # svelte-check first
     result = subprocess.run(
         ["npx", "svelte-check", "--threshold", "error"],
