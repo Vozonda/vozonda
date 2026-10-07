@@ -1,0 +1,6 @@
+runs/
+references/*
+!references/.gitkeep
+report.html
+judge_pack.json
+judge_key.json

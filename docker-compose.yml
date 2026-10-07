@@ -1,0 +1,81 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vozonda-api
+    restart: unless-stopped
+    ports:
+      # published on the host loopback only; see VOZONDA_PUBLISHED_ON below
+      - "127.0.0.1:${VOZONDA_PORT:-8787}:8787"
+    environment:
+      - VOZONDA_HOST=0.0.0.0
+      - VOZONDA_PORT=8787
+      # The API binds 0.0.0.0 inside the container, but the ports above reach it only
+      # from this machine, so the web UI may write without a token. If you publish the
+      # ports beyond 127.0.0.1, remove this line and set VOZONDA_TOKEN.
+      - VOZONDA_PUBLISHED_ON=loopback
+      - VOZONDA_DB=/app/data/jobs.db
+      - VOZONDA_MEDIA=/app/media
+      - VOZONDA_HF_HOME=/root/.cache/vozonda/hf
+      - VOZONDA_TTS_PY=${VOZONDA_TTS_PY:-/usr/local/bin/python}
+      - VOZONDA_TTS_ENGINE=${VOZONDA_TTS_ENGINE:-piper}
+      - VOZONDA_TTS_SCRIPT=${VOZONDA_TTS_SCRIPT:-/app/apps/api/src/vozonda_api/render_piper.py}
+      - VOZONDA_LLM_BASE=${VOZONDA_LLM_BASE:-http://host.docker.internal:11434/v1}
+      - VOZONDA_LLM_MODEL=${VOZONDA_LLM_MODEL:-qwen2.5:latest}
+      - VOZONDA_LLM_LABEL=${VOZONDA_LLM_LABEL:-local-llm}
+      - VOZONDA_LLM_FALLBACKS=${VOZONDA_LLM_FALLBACKS:-}
+      - VOZONDA_TTS_FALLBACKS=${VOZONDA_TTS_FALLBACKS:-}
+      - VOZONDA_WATCHLIST_INTERVAL=${VOZONDA_WATCHLIST_INTERVAL:-600}
+      - VOZONDA_WATCHLIST_MAX_NEW=${VOZONDA_WATCHLIST_MAX_NEW:-3}
+      - VOZONDA_TOKEN=${VOZONDA_TOKEN:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+    volumes:
+      - vozonda-data:/app/data
+      - vozonda-media:/app/media
+      - vozonda-hf-cache:/root/.cache/vozonda/hf
+      - vozonda-piper-cache:/root/.local/share/piper
+    extra_hosts:
+      # Allows reaching Ollama / vLLM / llama.cpp running on the host machine
+      - "host.docker.internal:host-gateway"
+    # Optional NVIDIA GPU acceleration for local Qwen3-TTS:
+    # See docs/quickstart.md for instructions on enabling GPU via docker-compose.override.yml
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8787/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: vozonda-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${VOZONDA_WEB_PORT:-4173}:80"
+    environment:
+      - VOZONDA_API_URL=http://api:8787
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  vozonda-data:
+    name: vozonda-data
+  vozonda-media:
+    name: vozonda-media
+  vozonda-hf-cache:
+    name: vozonda-hf-cache
+  vozonda-piper-cache:
+    name: vozonda-piper-cache

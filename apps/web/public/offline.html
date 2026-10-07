@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#76B900" />
+    <title>Vozonda · offline</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      :root {
+        --paper: #faf6ef;
+        --ink: #1a1815;
+        --ink-soft: #4a453c;
+        --line: #8f8776;
+        --green: #4a7300;
+        --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+        --font-serif: Georgia, serif;
+        --space-2: 8px;
+        --space-3: 16px;
+        --space-4: 24px;
+        --space-6: 64px;
+        --ui-size: 0.95rem;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #171410;
+          --ink: #ede8dd;
+          --ink-soft: #9a937f;
+          --line: #766e58;
+          --green: #96dd20;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: var(--font-serif);
+        background: var(--paper);
+        color: var(--ink);
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        padding: var(--space-4);
+      }
+      main {
+        max-width: 560px;
+        text-align: center;
+        display: grid;
+        gap: var(--space-3);
+      }
+      .kicker {
+        font-family: var(--font-mono);
+        color: var(--ink-soft);
+        font-size: var(--ui-size);
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(1.8rem, 5vw, 2.6rem);
+        line-height: 1.08;
+        letter-spacing: -0.02em;
+      }
+      p {
+        margin: 0;
+        color: var(--ink-soft);
+        font-family: var(--font-mono);
+        font-size: calc(var(--ui-size) * 0.9);
+        line-height: 1.5;
+      }
+      a {
+        display: inline-flex;
+        margin-top: var(--space-3);
+        padding: var(--space-2) var(--space-4);
+        background: var(--ink);
+        color: var(--paper);
+        border-radius: 2px;
+        font-family: var(--font-mono);
+        font-size: var(--ui-size);
+        text-decoration: none;
+      }
+      a:hover { background: var(--green); color: var(--paper); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="kicker">// vozonda</div>
+      <h1>You are offline.</h1>
+      <p>Vozonda needs a connection to turn new articles into episodes. Your library and recent episodes stay where you left them. Reconnect and paste a link when you are back.</p>
+      <p><a href="/">try again</a></p>
+    </main>
+  </body>
+</html>

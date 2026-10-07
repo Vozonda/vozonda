@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Vozonda">
+<title>Vozonda</title>
+<style>
+  :root {
+    --bubble: #1a1815;
+    --bar: #faf6ef;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bubble: #ede8dd;
+      --bar: #1f1d14;
+    }
+  }
+  .bubble { fill: var(--bubble); }
+  .bar { fill: var(--bar); }
+</style>
+<path class="bubble" d="M6 6H58V48H27L14 59V48H6Z"/>
+<rect class="bar" x="13.5" y="22" width="4" height="10"/>
+<rect class="bar" x="19.5" y="17" width="4" height="20"/>
+<rect class="bar" x="25.5" y="13" width="4" height="28"/>
+<rect class="bar" x="31.5" y="19" width="4" height="16"/>
+<rect class="bar" x="37.5" y="14" width="4" height="26"/>
+<rect class="bar" x="43.5" y="21" width="4" height="12"/>
+<rect class="bar" x="49.5" y="18" width="4" height="18"/>
+</svg>

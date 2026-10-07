@@ -1,0 +1,24 @@
+node_modules/
+**/node_modules/
+dist/
+__pycache__/
+*.pyc
+.venv/
+**/.venv/
+data/
+*.db
+.DS_Store
+apps/web/public/demo/*.mp3
+
+# caches
+test-results/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.env
+*.env
+.aider*
+
+# Internal working docs live outside this repo (symlinked on the maintainer machine)
+docs/archive
+opencode.json

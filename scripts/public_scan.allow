@@ -1,0 +1,13 @@
+# path regex : line regex  (both Python regular expressions)
+# lockfiles carry package hashes, not secrets
+uv\.lock$:.*
+package-lock\.json$:.*
+# published BIP-340 test vectors and secp256k1 constants
+bip340_test_vectors\.csv$:.*
+nostr_auth\.py$:_BIP340_[PN] =
+# the scanner and its tests contain the patterns they look for
+scripts/public_scan\.py$:.*
+apps/api/tests/test_public_scan\.py$:.*
+apps/api/tests/test_export_public\.py$:.*
+# export_public.sh is the public-export mechanism; it never ships with the repo
+scripts/export_public\.sh$:.*

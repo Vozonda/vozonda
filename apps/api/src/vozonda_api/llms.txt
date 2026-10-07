@@ -1,0 +1,104 @@
+# Vozonda API for Agents
+
+Vozonda turns articles, PDFs, images, YouTube videos, Nostr posts, text or RSS feeds into grounded multi-voice podcast episodes and publishes them on an RSS feed. Agents create jobs via POST, poll for completion, and fetch the resulting audio.
+
+## Quick agent flow
+
+1. **Create a job**
+
+   ```
+   curl -X POST http://localhost:8787/jobs \
+     -H "Content-Type: application/json" \
+     -d '{"url": "https://example.com/article", "target_minutes": 10}'
+   ```
+
+   Returns a JSON object with an `id` and `state`. When billing is enabled the endpoint can return **402 Payment Required** with the price before processing.
+
+   Optional fields: `style`, `language`, `hosts` (1, 2, or 3), `focus` (what to dig into), `digest` + `digest_sources` (multi-source episode), `combine` (one conversation across multiple URLs), `review_script` (pause after script for editing).
+
+   When write auth is enabled (`VOZONDA_TOKEN` is set), include `Authorization: Bearer <token>`.
+
+2. **Poll for completion**
+
+   ```
+   curl http://localhost:8787/jobs/{id}
+   ```
+
+   States: `queued`, `running`, `fetch`, `script`, `voice`, `master`, `done`, `failed`, `cancelled`, `awaiting_review`. Poll until `done` or `failed`.
+
+   Or use Server-Sent Events for live updates:
+
+   ```
+   curl -N http://localhost:8787/jobs/{id}/events
+   ```
+
+3. **Fetch the audio**
+
+   ```
+   curl -o episode.mp3 http://localhost:8787/audio/{id}.mp3
+   ```
+
+4. **Subscribe to the RSS feed**
+
+   The generated episodes are available at `/feed.xml` (see `/meta` for the feed URL).
+
+## Script review
+
+When `review_script: true` is sent with the job request, the job enters `awaiting_review` after script generation. Edit and approve:
+
+   ```
+   curl -X POST http://localhost:8787/jobs/{id}/script \
+     -H "Content-Type: application/json" \
+     -d '{"lines": [{"speaker": "A", "text": "edited text"}]}'
+   ```
+
+## Other endpoints
+
+- `GET /jobs` -- list recent completed jobs
+- `GET /meta` -- available styles, voices, languages, TTS/LLM engine info
+- `GET /openapi.json` -- full OpenAPI schema
+- `GET /distribution` -- distribution defaults, public URL reachability, and per-show reach (RSS, Nostr)
+- `PUT /shows/{slug}/rss` -- enable/disable RSS feed for a show (write auth required)
+
+## Billing
+
+When billing is enabled (`VOZONDA_ENABLE_BILLING=true`), POST /jobs may return **402** with the estimated price. Access tokens are managed at `/billing/tokens`.
+
+## Auth
+
+When `VOZONDA_TOKEN` is set, mutating endpoints (`POST`, `PUT`, `DELETE`) require `Authorization: Bearer <token>`.
+
+## MCP (Model Context Protocol)
+
+Vozonda provides an MCP server in `mcp_server.py` so assistants (Claude Code, Claude Desktop, Cursor, etc.) can produce episodes directly.
+
+Start stdio transport:
+
+```
+python -m vozonda_api.mcp_server
+```
+
+Start streamable HTTP transport (mounts on `/mcp`, default port 8790):
+
+```
+python -m vozonda_api.mcp_server --http --port 8790 --host 127.0.0.1
+```
+
+Configuration via environment variables:
+- `VOZONDA_API`: API base URL (default: `http://127.0.0.1:8787`)
+- `VOZONDA_TOKEN`: bearer token for write operations when API auth is enabled
+
+Tools:
+- `create_episode`: create a podcast episode from URLs or pasted text with optional minutes, style, language, focus
+- `get_episode`: poll episode status and retrieve audio_url once state is done
+- `list_episodes`: list recent episodes with id, title, state, and created_at
+- `list_styles`: list available dialogue styles with descriptions
+- `get_feed_url`: get the RSS feed URL for completed episodes
+- `list_watchlists`: list all watched feeds with their schedule and status
+- `create_watchlist`: watch an RSS/Atom feed so new articles become episodes automatically; optional schedule for digest bundling
+- `set_watchlist_schedule`: set or clear when a watched feed renders its digest episode
+- `check_watchlist`: poll a watched feed right now and render new entries
+- `render_digest`: bundle the newest fresh entries of a watched feed into one episode
+- `delete_watchlist`: stop watching a feed; keeps episodes already rendered
+
+For the complete setup guide, client JSON configurations, and human/agent workflows, see the `#agents` page in the web app.

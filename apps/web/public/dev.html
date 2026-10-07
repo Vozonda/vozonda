@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vozonda - Contributor Cockpit & Machine Truth</title>
+<meta name="description" content="Vozonda Developer & Contributor Cockpit: real-time engineering metrics, code sovereignty gauges, and actionable bounties.">
+<style>
+:root {
+--paper: #faf6ef;
+--ink: #2a2720;
+--ink-soft: #6e6757;
+--line: #8f8776;
+--green: #2f855a;
+--green-dim: rgba(47, 133, 90, 0.12);
+--font-serif: "Source Serif 4Variable", Georgia, serif;
+--font-mono: "JetBrains MonoVariable", ui-monospace, monospace;
+--radius: 2px;
+--space-1: 4px;
+--space-2: 8px;
+--space-3: 16px;
+--space-4: 24px;
+--space-5: 32px;
+--space-6: 48px;
+--content-max-width: 860px;
+--ui-size: 0.85rem;
+--dur-fast: 120ms;
+}
+@media (prefers-color-scheme: dark) {
+:root {
+--paper: #1f1d14;
+--ink: #ece7db;
+--ink-soft: #a8a08d;
+--line: #766e58;
+--green: #48bb78;
+--green-dim: rgba(72, 187, 120, 0.15);
+}
+}
+* {
+box-sizing: border-box;
+margin: 0;
+padding: 0;
+}
+html {
+background: var(--paper);
+color: var(--ink);
+font-family: var(--font-serif);
+font-size: 1.05rem;
+line-height: 1.6;
+-webkit-font-smoothing: antialiased;
+}
+body {
+min-height: 100dvh;
+display: flex;
+flex-direction: column;
+}
+.mono {
+font-family: var(--font-mono);
+font-size: var(--ui-size);
+letter-spacing: 0.03em;
+}
+a {
+color: var(--ink);
+text-decoration: underline;
+text-decoration-color: var(--ink-soft);
+text-underline-offset: 3px;
+}
+a:hover {
+color: var(--green);
+text-decoration-color: var(--green);
+}
+.container {
+max-width: var(--content-max-width);
+width: 100%;
+margin: 0 auto;
+padding: var(--space-6) var(--space-4);
+}
+/* Masthead Meta Bar */
+.masthead {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: var(--space-5);
+padding-bottom: var(--space-3);
+border-bottom: 1px solid var(--line);
+flex-wrap: wrap;
+gap: var(--space-2);
+}
+.masthead-left,
+.masthead-right {
+display: flex;
+align-items: center;
+gap: var(--space-2);
+}
+.brand {
+color: var(--green);
+text-decoration: none;
+font-weight: 600;
+}
+.sep {
+color: var(--ink-soft);
+opacity: 0.6;
+}
+.tag {
+color: var(--ink-soft);
+}
+.status-pill {
+display: inline-flex;
+align-items: center;
+gap: 6px;
+padding: 2px 8px;
+border: 1px solid var(--line);
+border-radius: var(--radius);
+color: var(--green);
+font-size: 0.78rem;
+text-transform: uppercase;
+letter-spacing: 0.04em;
+}
+.status-pill .dot {
+width: 6px;
+height: 6px;
+background: var(--green);
+border-radius: 50%;
+display: inline-block;
+}
+.nav-back {
+text-decoration: none;
+color: var(--ink-soft);
+padding: 4px 6px;
+min-height: 24px;
+display: inline-flex;
+align-items: center;
+}
+.nav-back:hover {
+color: var(--green);
+}
+/* Hero */
+.hero {
+margin-bottom: var(--space-6);
+}
+.kicker {
+color: var(--green);
+margin-bottom: var(--space-1);
+}
+h1 {
+font-size: clamp(2rem, 4.5vw, 2.8rem);
+font-weight: 600;
+line-height: 1.15;
+letter-spacing: -0.02em;
+margin-bottom: var(--space-3);
+text-wrap: balance;
+}
+.lede {
+font-size: clamp(1rem, 2.2vw, 1.15rem);
+color: var(--ink-soft);
+max-width: 60ch;
+margin-bottom: var(--space-4);
+}
+.badge-bar {
+display: flex;
+gap: var(--space-2);
+align-items: center;
+flex-wrap: wrap;
+}
+.badge {
+display: inline-flex;
+align-items: center;
+gap: 4px;
+padding: 2px 8px;
+border: 1px solid var(--line);
+border-radius: var(--radius);
+font-family: var(--font-mono);
+font-size: 0.78rem;
+text-transform: uppercase;
+letter-spacing: 0.04em;
+}
+.badge.version {
+background: var(--line);
+color: var(--ink);
+font-weight: 600;
+border: none;
+}
+.badge.highlight {
+border-color: var(--green);
+color: var(--green);
+}
+.badge.xp {
+background: var(--green-dim);
+border-color: var(--green);
+color: var(--green);
+font-weight: 700;
+}
+/* Section Layout */
+section {
+margin-bottom: var(--space-6);
+padding-top: var(--space-4);
+border-top: 1px solid var(--line);
+}
+h2 {
+font-size: clamp(1.4rem, 3vw, 1.85rem);
+font-weight: 600;
+margin-bottom: var(--space-2);
+line-height: 1.2;
+}
+h3 {
+font-size: 1.15rem;
+font-weight: 600;
+margin: var(--space-3) 0 var(--space-2);
+}
+h4 {
+font-size: var(--ui-size);
+font-family: var(--font-mono);
+color: var(--ink-soft);
+margin: var(--space-3) 0 var(--space-1);
+text-transform: uppercase;
+letter-spacing: 0.04em;
+}
+p {
+margin-bottom: var(--space-3);
+}
+ul {
+margin: 0 0 var(--space-3) var(--space-4);
+}
+li {
+margin-bottom: var(--space-1);
+}
+/* KPI Cockpit Grid */
+.kpi-grid {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+gap: var(--space-3);
+margin-top: var(--space-4);
+margin-bottom: var(--space-4);
+}
+.kpi-card {
+background: var(--paper);
+border: 1px solid var(--line);
+border-radius: var(--radius);
+padding: var(--space-3);
+display: flex;
+flex-direction: column;
+justify-content: space-between;
+gap: var(--space-2);
+}
+.kpi-header {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: var(--space-2);
+color: var(--ink-soft);
+font-size: 0.82rem;
+}
+.kpi-icon {
+display: inline-flex;
+align-items: center;
+justify-content: center;
+color: var(--green);
+}
+.kpi-val {
+font-size: 1.55rem;
+font-weight: 700;
+color: var(--ink);
+line-height: 1.1;
+font-family: var(--font-mono);
+}
+.kpi-unit {
+font-size: 0.88rem;
+font-weight: 400;
+color: var(--ink-soft);
+}
+.kpi-desc {
+font-size: 0.82rem;
+color: var(--ink-soft);
+line-height: 1.35;
+}
+.kpi-bar {
+width: 100%;
+height: 4px;
+background: var(--line);
+border-radius: var(--radius);
+overflow: hidden;
+margin-top: 4px;
+}
+.kpi-bar-fill {
+height: 100%;
+background: var(--green);
+}
+.kpi-footer {
+display: flex;
+align-items: center;
+justify-content: space-between;
+font-size: 0.78rem;
+color: var(--ink-soft);
+border-top: 1px dashed var(--line);
+padding-top: var(--space-2);
+}
+/* Dev Quests Grid */
+.quest-grid {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+gap: var(--space-3);
+margin-top: var(--space-4);
+margin-bottom: var(--space-4);
+}
+.quest-card {
+background: var(--paper);
+border: 1px solid var(--line);
+border-radius: var(--radius);
+padding: var(--space-3);
+display: flex;
+flex-direction: column;
+justify-content: space-between;
+gap: var(--space-2);
+}
+.quest-meta {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: var(--space-2);
+}
+.quest-title {
+font-size: 1.05rem;
+font-weight: 600;
+color: var(--ink);
+margin: 0;
+}
+.quest-desc {
+font-size: 0.85rem;
+color: var(--ink-soft);
+line-height: 1.4;
+margin: 0;
+flex-grow: 1;
+}
+.quest-action {
+background: rgba(0, 0, 0, 0.03);
+border: 1px solid var(--line);
+border-radius: var(--radius);
+padding: 6px 10px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 8px;
+margin-top: var(--space-2);
+}
+.quest-action code {
+font-size: 0.78rem;
+color: var(--ink);
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
+}
+/* Onboarding Grid */
+.onboard-grid {
+display: flex;
+flex-direction: column;
+gap: var(--space-3);
+margin-top: var(--space-4);
+}
+/* Audio Player */
+.player {
+display: flex;
+align-items: center;
+gap: var(--space-4);
+padding: var(--space-3);
+border: 1px solid var(--line);
+border-radius: var(--radius);
+margin: var(--space-4) 0;
+background: var(--paper);
+}
+@media (max-width: 480px) {
+.player {
+gap: var(--space-2);
+padding: var(--space-2);
+}
+}
+.play {
+flex-shrink: 0;
+width: 48px;
+height: 48px;
+border-radius: 50%;
+border: none;
+background: var(--ink);
+color: var(--paper);
+font-size: 0.85rem;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+transition: background var(--dur-fast), color var(--dur-fast);
+}
+.play:hover {
+background: var(--green);
+color: var(--paper);
+}
+.play:focus-visible {
+outline: 2px solid var(--green);
+outline-offset: 2px;
+}
+.play.playing {
+background: var(--green);
+color: var(--paper);
+}
+.wave {
+flex: 1;
+height: 48px;
+width: 100%;
+cursor: pointer;
+display: block;
+}
+.time {
+flex-shrink: 0;
+color: var(--ink-soft);
+min-width: 46px;
+text-align: right;
+}
+.hidden {
+display: none;
+}
+/* Chapters List */
+.chapters {
+border: 1px solid var(--line);
+border-radius: var(--radius);
+padding: var(--space-3);
+margin: var(--space-4) 0;
+background: var(--paper);
+}
+.ch-title {
+display: block;
+color: var(--ink-soft);
+font-size: var(--ui-size);
+margin-bottom: var(--space-2);
+text-transform: uppercase;
+letter-spacing: 0.04em;
+}
+.chapters ol {
+list-style: none;
+margin: 0;
+padding: 0;
+}
+.chapter-item {
+padding: 4px 0;
+border-bottom: 1px dashed var(--line);
+}
+.chapter-item:last-child {
+border-bottom: none;
+}
+.chapters button.link {
+background: none;
+border: none;
+color: var(--ink-soft);
+font-family: var(--font-mono);
+font-size: var(--ui-size);
+cursor: pointer;
+padding: 2px 0;
+text-align: left;
+transition: color var(--dur-fast);
+}
+.chapters button.link:hover {
+color: var(--green);
+}
+.chapters li.active button.link {
+color: var(--green);
+font-weight: 600;
+}
+/* Accordion System (Signal over Noise) */
+details.accordion {
+border: 1px solid var(--line);
+border-radius: var(--radius);
+margin-bottom: var(--space-3);
+background: var(--paper);
+}
+details.accordion summary {
+padding: var(--space-3);
+cursor: pointer;
+user-select: none;
+font-weight: 600;
+color: var(--ink);
+display: flex;
+align-items: center;
+justify-content: space-between;
+outline: none;
+}
+details.accordion summary:hover {
+background: rgba(120, 110, 88, 0.06);
+}
+details.accordion summary::-webkit-details-marker {
+display: none;
+}
+details.accordion .accordion-body {
+padding: var(--space-3);
+border-top: 1px solid var(--line);
+}
+/* Feature Cards (Release Highlights) */
+.feature-cards-grid {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+gap: var(--space-3);
+margin-top: var(--space-2);
+}
+.feature-card {
+border: 1px solid var(--line);
+border-radius: var(--radius);
+padding: var(--space-3);
+background: rgba(0, 0, 0, 0.01);
+display: flex;
+flex-direction: column;
+gap: var(--space-1);
+}
+.fc-head {
+display: flex;
+align-items: baseline;
+gap: var(--space-2);
+flex-wrap: wrap;
+}
+.fc-title {
+font-size: 0.95rem;
+color: var(--ink);
+}
+.fc-desc {
+font-size: 0.88rem;
+color: var(--ink-soft);
+margin: 0;
+line-height: 1.45;
+}
+/* Stacked Roadmap Cards */
+.roadmap-stack {
+display: flex;
+flex-direction: column;
+gap: var(--space-3);
+}
+.roadmap-card {
+border: 1px solid var(--line);
+border-radius: var(--radius);
+padding: var(--space-3) var(--space-4);
+background: rgba(0, 0, 0, 0.01);
+}
+.roadmap-card.current {
+border-color: var(--green);
+background: rgba(74, 115, 0, 0.03);
+}
+.rc-header {
+display: flex;
+align-items: baseline;
+gap: var(--space-2);
+margin-bottom: var(--space-2);
+flex-wrap: wrap;
+}
+.rc-title {
+font-size: 1.05rem;
+font-weight: 600;
+margin: 0;
+}
+.rc-items {
+list-style: none;
+margin: 0;
+padding: 0;
+font-size: 0.88rem;
+}
+.rc-items li {
+margin-bottom: 2px;
+line-height: 1.4;
+}
+.rc-items li.done {
+color: var(--ink);
+}
+.rc-items li.pending {
+color: var(--ink-soft);
+}
+.check {
+color: var(--green);
+font-weight: 600;
+}
+/* Backlog & Issues */
+.topic-row {
+padding: var(--space-2) 0;
+border-bottom: 1px solid var(--line);
+}
+.topic-meta {
+margin-bottom: 2px;
+}
+.due-id {
+color: var(--green);
+margin-left: var(--space-1);
+}
+.badge.prio-critical,
+.badge.prio-high {
+border-color: #a84438;
+color: #a84438;
+}
+.badge.prio-medium {
+border-color: #8a6414;
+color: #8a6414;
+}
+.badge.prio-low,
+.badge.fixed {
+border-color: var(--ink-soft);
+color: var(--ink-soft);
+}
+.issue-list {
+list-style: none;
+margin: 0;
+padding: 0;
+}
+.issue-item {
+display: flex;
+gap: var(--space-2);
+align-items: baseline;
+padding: var(--space-1) 0;
+font-size: var(--ui-size);
+border-bottom: 1px dashed var(--line);
+}
+.issue-num {
+color: var(--ink-soft);
+flex-shrink: 0;
+width: 42px;
+}
+.issue-title {
+flex: 1;
+}
+.issue-labels {
+display: flex;
+gap: 4px;
+}
+.badge.label {
+font-size: 0.7rem;
+padding: 1px 4px;
+color: var(--ink-soft);
+}
+/* Code Boxes */
+.code-box {
+border: 1px solid var(--line);
+border-radius: var(--radius);
+margin-bottom: var(--space-2);
+background: var(--paper);
+}
+.code-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: var(--space-2) var(--space-3);
+border-bottom: 1px solid var(--line);
+background: rgba(0, 0, 0, 0.02);
+}
+.code-label {
+color: var(--ink-soft);
+font-size: 0.78rem;
+}
+.copy-btn {
+background: transparent;
+border: 1px solid var(--line);
+border-radius: var(--radius);
+padding: 2px 8px;
+font-size: 0.78rem;
+cursor: pointer;
+color: var(--ink);
+display: inline-flex;
+align-items: center;
+gap: 4px;
+transition: all 120ms ease-out;
+}
+.copy-btn:hover {
+background: var(--green);
+border-color: var(--green);
+color: var(--paper);
+}
+.copy-btn.copied {
+background: var(--green);
+border-color: var(--green);
+color: var(--paper);
+}
+pre.code-block {
+padding: var(--space-3);
+overflow-x: auto;
+font-family: var(--font-mono);
+font-size: var(--ui-size);
+line-height: 1.5;
+margin: 0;
+}
+.cta-box {
+border: 1px solid var(--line);
+border-radius: var(--radius);
+padding: var(--space-4);
+margin-top: var(--space-4);
+background: rgba(0, 0, 0, 0.02);
+}
+.older-release {
+margin-bottom: var(--space-4);
+padding-bottom: var(--space-3);
+border-bottom: 1px dashed var(--line);
+}
+.older-release:last-child {
+border-bottom: none;
+}
+/* Footer */
+footer.foot {
+margin-top: var(--space-6);
+padding-top: var(--space-4);
+border-top: 1px solid var(--line);
+display: flex;
+justify-content: space-between;
+align-items: center;
+flex-wrap: wrap;
+gap: var(--space-2);
+color: var(--ink-soft);
+}
+</style>
+</head>
+<body>
+<div class="container">
+<nav class="masthead mono" aria-label="Development page navigation">
+<div class="masthead-left">
+<a href="/" class="brand">// vozonda</a>
+<span class="sep">·</span>
+<span class="tag">v0.6.0</span>
+<span class="sep">·</span>
+</div>
+<div class="masthead-right">
+<span class="status-pill"><span class="dot"></span> 100% local</span>
+<a href="/" class="nav-back">← back to app</a>
+</div>
+</nav>
+<header class="hero">
+<p class="kicker mono">// developer & contributor cockpit</p>
+<h1>Engine Room & Contributor Cockpit</h1>
+<p class="lede">Real-time engineering metrics, code sovereignty gauges, and actionable dev quests to push Vozonda forward.</p>
+<div class="badge-bar">
+<span class="badge version">v0.6.0</span>
+<span class="badge highlight">100% on-device</span>
+<span class="badge">self-hosted</span>
+<span class="badge">calm grid</span>
+<span class="badge">open source</span>
+</div>
+</header>
+<!-- SECTION 1: MACHINE TRUTH COCKPIT (TOP KPIs) -->
+<section id="cockpit">
+<h2>Machine-Truth Cockpit</h2>
+<p class="lede">Direct telemetry from build gates, bundle budgets, accessibility audits, and local AI execution.</p>
+<div class="kpi-grid">
+<!-- Card 1: Web Bundle Health -->
+<div class="kpi-card">
+<div class="kpi-header">
+<span class="mono">web bundle budget</span>
+<span class="kpi-icon" title="Bundle size measured"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
+</div>
+<div class="kpi-val">60.00 KB <span class="kpi-unit">gzip budget</span></div>
+<div class="kpi-desc">initial JS of the compose page, enforced on every change by apps/api/tests/test_js_budget.py</div>
+<div class="kpi-footer mono">
+<span>threshold: &lt; 60 KB</span>
+<span class="badge highlight">passing</span>
+</div>
+</div>
+<!-- Card 2: Test Suite Health -->
+<div class="kpi-card">
+<div class="kpi-header">
+<span class="mono">verification gate</span>
+<span class="kpi-icon" title="Pytest & Svelte check"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></span>
+</div>
+<div class="kpi-val">1,555 <span class="kpi-unit">passed · 0 fail</span></div>
+<div class="kpi-desc">58 test suites green · ~74s parallel runtime (pytest-xdist)</div>
+<div class="kpi-bar"><div class="kpi-bar-fill" style="width: 100%"></div></div>
+<div class="kpi-footer mono">
+<span>all gates green</span>
+<span class="badge highlight">100% pass</span>
+</div>
+</div>
+<!-- Card 3: Accessibility & Sunlight Contrast -->
+<div class="kpi-card">
+<div class="kpi-header">
+<span class="mono">contrast & a11y</span>
+<span class="kpi-icon" title="WCAG 2.1 AA Compliance"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></span>
+</div>
+<div class="kpi-val">3.33 : 1 <span class="kpi-unit">contrast</span></div>
+<div class="kpi-desc">WCAG 2.1 AA sunlight-proof lines (req &ge; 3.0:1) · 0 Axe violations</div>
+<div class="kpi-bar"><div class="kpi-bar-fill" style="width: 100%"></div></div>
+<div class="kpi-footer mono">
+<span>standard: WCAG 2.1 AA</span>
+<span class="badge highlight">verified</span>
+</div>
+</div>
+<!-- Card 4: Sovereignty & Local Weights -->
+<div class="kpi-card">
+<div class="kpi-header">
+<span class="mono">sovereignty</span>
+<span class="kpi-icon" title="Zero cloud telemetry"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+</div>
+<div class="kpi-val">100% <span class="kpi-unit">on-device</span></div>
+<div class="kpi-desc">Zero external analytics · Zero cloud API calls · Pure local inference</div>
+<div class="kpi-bar"><div class="kpi-bar-fill" style="width: 100%"></div></div>
+<div class="kpi-footer mono">
+<span>runtime: Qwen / Kokoro</span>
+<span class="badge highlight">sovereign</span>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 2: OPEN SOURCE CONTRIBUTIONS & GOOD FIRST ISSUES -->
+<section id="contribute">
+<h2>Contribute & Good First Issues</h2>
+<p class="lede">Pick an area of focus to help improve Vozonda. Checkout the branch, test your changes, and submit a PR.</p>
+<div class="quest-grid">
+<!-- Topic 1 -->
+<div class="quest-card">
+<div class="quest-meta">
+<span class="badge highlight">good first issue</span>
+<span class="badge">perf · svelte</span>
+</div>
+<h3 class="quest-title">Bundle Diet: 1.5 KB Headroom</h3>
+<p class="quest-desc">Tree-shake remaining CSS selectors and simplify component imports to expand the client JS headroom under 60 KB.</p>
+<div class="quest-action">
+<code class="mono">git checkout -b quest/bundle-diet</code>
+<button type="button" class="copy-btn mono" onclick="copySnippet(this, 'git checkout -b quest/bundle-diet')" aria-label="Copy checkout command"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> copy</button>
+</div>
+</div>
+<!-- Topic 2 -->
+<div class="quest-card">
+<div class="quest-meta">
+<span class="badge">help wanted</span>
+<span class="badge">pwa · storage</span>
+</div>
+<h3 class="quest-title">Offline Audio PWA Cache</h3>
+<p class="quest-desc">Implement CacheStorage in sw.js for rendered episode MP3s so saved podcasts play seamlessly offline without a network connection.</p>
+<div class="quest-action">
+<code class="mono">git checkout -b quest/pwa-audio-cache</code>
+<button type="button" class="copy-btn mono" onclick="copySnippet(this, 'git checkout -b quest/pwa-audio-cache')" aria-label="Copy checkout command"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> copy</button>
+</div>
+</div>
+<!-- Topic 3 -->
+<div class="quest-card">
+<div class="quest-meta">
+<span class="badge">help wanted</span>
+<span class="badge">bitcoin · webln</span>
+</div>
+<h3 class="quest-title">WebLN 1-Click Zap Tip</h3>
+<p class="quest-desc">Integrate window.webln provider support into the player bar for instant 1-click lightning sats tipping directly to show hosts.</p>
+<div class="quest-action">
+<code class="mono">git checkout -b quest/webln-zap</code>
+<button type="button" class="copy-btn mono" onclick="copySnippet(this, 'git checkout -b quest/webln-zap')" aria-label="Copy checkout command"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> copy</button>
+</div>
+</div>
+<!-- Topic 4 -->
+<div class="quest-card">
+<div class="quest-meta">
+<span class="badge highlight">good first issue</span>
+<span class="badge">audio · ai</span>
+</div>
+<h3 class="quest-title">Kokoro German Cadence Tuning</h3>
+<p class="quest-desc">Refine phoneme dictionary mapping and pause intervals for Kokoro German synthesis (de-DE) in tts_kokoro.py.</p>
+<div class="quest-action">
+<code class="mono">git checkout -b quest/kokoro-de-tuning</code>
+<button type="button" class="copy-btn mono" onclick="copySnippet(this, 'git checkout -b quest/kokoro-de-tuning')" aria-label="Copy checkout command"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> copy</button>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 3: 1-MINUTE DEVELOPER ONBOARDING -->
+<section id="onboarding">
+<h2>1-Minute Developer Onboarding</h2>
+<p class="lede">Reproduce machine truth on your own workstation in three copy-paste commands:</p>
+<div class="onboard-grid">
+<div class="code-box">
+<div class="code-header">
+<span class="mono code-label">// 1. Run full verification gate (1,555 tests)</span>
+<button type="button" class="copy-btn mono" onclick="copySnippet(this, './scripts/verify.sh')" aria-label="Copy verify command"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> copy</button>
+</div>
+<pre class="code-block"><code class="mono">./scripts/verify.sh</code></pre>
+</div>
+<div class="code-box">
+<div class="code-header">
+<span class="mono code-label">// 2. Seed realistic QA data fixtures</span>
+<button type="button" class="copy-btn mono" onclick="copySnippet(this, './scripts/seed-qa.sh')" aria-label="Copy seed command"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> copy</button>
+</div>
+<pre class="code-block"><code class="mono">./scripts/seed-qa.sh</code></pre>
+</div>
+<div class="code-box">
+<div class="code-header">
+<span class="mono code-label">// 3. Spin up local stack with Docker Compose</span>
+<button type="button" class="copy-btn mono" onclick="copySnippet(this, 'docker compose up -d')" aria-label="Copy docker command"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> copy</button>
+</div>
+<pre class="code-block"><code class="mono">docker compose up -d</code></pre>
+</div>
+</div>
+<div class="cta-box">
+<h3 class="mono">// open source release</h3>
+<p>Vozonda is developed under the Calm Grid doctrine. The code is developed in the open on GitHub (Vozonda/vozonda).</p>
+<p class="mono note">Stack: Svelte 5, FastAPI, SQLite, ffmpeg, Qwen3 / Kokoro / Piper.</p>
+</div>
+</section>
+<!-- SECTION 4: INTERACTIVE AUDIO DEMO & CHAPTERS -->
+<section id="demo">
+<h2>Audio Demo & Chapters</h2>
+<p class="lede">Listen to a real Tagesschau 3-story digest generated fully on-device with chapter markers and speaker transitions:</p>
+<audio id="audio-elem" preload="metadata">
+<source src="/audio/digest-1f2ef4.mp3" type="audio/mpeg">
+Your browser does not support the audio element.
+</audio>
+<div class="player">
+<button id="play-btn" class="play" type="button" aria-label="Play">
+<span id="play-icon">▶</span>
+<span id="pause-icon" class="hidden">❚❚</span>
+</button>
+<canvas id="wave-canvas" class="wave" role="slider" aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"></canvas>
+<span id="time-readout" class="mono time">00:00</span>
+</div>
+<nav class="chapters mono" aria-label="Episode chapters">
+<span class="ch-title">chapters (3 stories · 8:53 min · 3 hosts)</span>
+<ol>
+<li class="chapter-item" data-seconds="0" data-index="0">
+<button type="button" class="link mono" onclick="seekChapter(0)" aria-label="Seek to chapter 1: Marktbericht: Anleger nervoes in der Woche der Wahrheit">
+1 · Marktbericht: Anleger nervoes in der Woche der Wahrheit
+</button>
+</li>
+<li class="chapter-item" data-seconds="177" data-index="1">
+<button type="button" class="link mono" onclick="seekChapter(177)" aria-label="Seek to chapter 2: Nach UN-Job: Baerbock wechselt an die Columbia-Universitaet">
+2 · Nach UN-Job: Baerbock wechselt an die Columbia-Universitaet
+</button>
+</li>
+<li class="chapter-item" data-seconds="354" data-index="2">
+<button type="button" class="link mono" onclick="seekChapter(354)" aria-label="Seek to chapter 3: Referendum ueber EU-Beitrittsverhandlungen: Bruessel hofft auf ein Ja aus Island">
+3 · Referendum ueber EU-Beitrittsverhandlungen: Bruessel hofft auf ein Ja aus Island
+</button>
+</li>
+</ol>
+</nav>
+</section>
+<!-- SECTION 5: ACCORDION ARCHIVES (SIGNAL FIRST, NOISE COLLAPSED) -->
+<section id="archive">
+<h2>Milestones & Backlog</h2>
+<p class="lede">Explore full release notes, roadmap progress, and issue tickets on demand:</p>
+<details class="accordion" open>
+<summary class="mono">
+<span>Release Notes: v0.6.0 (Major Milestone)</span>
+<span class="caret">▾</span>
+</summary>
+<div class="accordion-body">
+<div class="feature-cards-grid">
+<div class="feature-card">
+<div class="fc-head">
+<span class="badge version">Changed</span>
+<strong class="fc-title">Complete brand rebrand to Vozonda (Voz = Voice, Onda = Wave; VOZONDA-REBRAND) with zero breaking changes for existing installs, feeds, or local storage.</strong>
+</div>
+</div>
+<div class="feature-card">
+<div class="fc-head">
+<span class="badge version">Changed</span>
+<strong class="fc-title">VOZONDA_* env vars, automatic browser settings migration, podcast feeds keep their GUIDs.</strong>
+</div>
+</div>
+<div class="feature-card">
+<div class="fc-head">
+<span class="badge highlight">Added</span>
+<strong class="fc-title">Source objects for the coming source tray</strong>
+</div>
+<p class="fc-desc">a link, note or uploaded file (PDF, JPG, PNG, WebP, TXT, MD) is read once when it is added and shows its real kind (from what the server sent, not the link), title, size and language, or an error with a next step (paywall, PDF without text layer, no subtitles, ...). Uploads keep only their extracted text; images are re-encoded (no EXIF) before the local vision model reads them; unused sources expire after 24 h. `POST /sources`, `POST /sources/upload`, `GET|PATCH|DELETE /sources/{id}`, `POST /sources/{id}/retry`; `POST /jobs` takes `sources` (ids with role main/context), and every episode keeps a copy of its sources: `GET /jobs/{id}/sources` (public: uploads by title only) and `POST /jobs/{id}/sources/clone` for create variant (same text, no re-fetch)</p>
+</div>
+<div class="feature-card">
+<div class="fc-head">
+<span class="badge highlight">Added</span>
+<strong class="fc-title">Distribution per show</strong>
+</div>
+<p class="fc-desc">each show picks its reach (private, podcast apps via RSS, Nostr only, or both); &quot;Nostr only&quot; turns the show&#x27;s RSS feed off. `GET /distribution`, `PUT /shows/{slug}/rss`, user guide in `docs/distribution.md`</p>
+</div>
+<div class="feature-card">
+<div class="fc-head">
+<span class="badge fixed">Fixed</span>
+<strong class="fc-title">Episode covers were never stored (since 0.5.0 every store call raised and was only logged); the library and the player show them, and the library shows the audio length, not the render time</strong>
+</div>
+</div>
+<div class="feature-card">
+<div class="fc-head">
+<span class="badge fixed">Fixed</span>
+<strong class="fc-title">A truncated LLM answer no longer ends a script mid-sentence</strong>
+</div>
+<p class="fc-desc">the half-written turn is dropped</p>
+</div>
+<div class="feature-card">
+<div class="fc-head">
+<span class="badge fixed">Removed</span>
+<strong class="fc-title">The per-turn TURN PLAN and the full-rewrite RHYTHM CORRECTION pass (replaced by the script contract, the role repair and the rhythm layer)</strong>
+</div>
+</div>
+<div class="feature-card">
+<div class="fc-head">
+<span class="badge fixed">Removed</span>
+<strong class="fc-title">Piper voice `lessac` (trained on a non-commercial corpus)</strong>
+</div>
+</div>
+<div class="feature-card">
+<div class="fc-head">
+<span class="badge fixed">Security</span>
+<strong class="fc-title">urllib3 2.8.0; transformers stays at 4.57.3 until qwen-tts unpins it (see docs/audits/2026-10-security.md)</strong>
+</div>
+</div>
+</div>
+</div>
+</details>
+<details class="accordion">
+<summary class="mono">
+<span>Strategic Roadmap (Phases 0 - 3)</span>
+<span class="caret">▾</span>
+</summary>
+<div class="accordion-body">
+<div class="roadmap-stack">
+</div>
+</div>
+</details>
+<details class="accordion">
+<summary class="mono">
+<span>Tactical Backlog & Closed Topics (0 closed · 0 open)</span>
+<span class="caret">▾</span>
+</summary>
+<div class="accordion-body">
+<h3>Tactical Backlog & Next Focus</h3>
+<div class="topics-list">
+<div class="topic-row">
+<div class="topic-meta"><span class="badge prio-high">High</span> </div>
+<div class="topic-text">#183 Sovereign L402 Lightning Pay-per-Job &amp; Access Token Gate (DUE-067)</div>
+</div>
+<div class="topic-row">
+<div class="topic-meta"><span class="badge prio-high">High</span> </div>
+<div class="topic-text">#188 Nostr Bookmark Sync (NIP-51 kind 10003) for Watchlist Ingestion</div>
+</div>
+<div class="topic-row">
+<div class="topic-meta"><span class="badge prio-high">High</span> </div>
+<div class="topic-text">#256 Key Takeaways &amp; Executive Summary Pipeline Extraction (DUE-071)</div>
+</div>
+<div class="topic-row">
+<div class="topic-meta"><span class="badge prio-high">High</span> </div>
+<div class="topic-text">#257 Dual Mode Player: Podcast Mode vs. Key Takeaways 60s Reader (DUE-072)</div>
+</div>
+<div class="topic-row">
+<div class="topic-meta"><span class="badge prio-high">High</span> </div>
+<div class="topic-text">#258 RSS &amp; Watchlist Digest Integration for Key Takeaways (DUE-073)</div>
+</div>
+</div>
+</div>
+</details>
+<details class="accordion">
+<summary class="mono">
+<span>Changelog Archive (3 previous releases)</span>
+<span class="caret">▾</span>
+</summary>
+<div class="accordion-body">
+<div class="older-release">
+<h4 class="mono">v0.5.0</h4>
+<h4>Added</h4>
+<ul>
+<li>Digest mode (#122): bundle N feed articles into one episode - per-watchlist</li>
+</ul>
+<p>digest toggle + story count, render-digest-now endpoint, chapter list in</p>
+<p>listen view, digest badge in library, digest-aware script prompt with</p>
+<p>per-story sections and transitions</p>
+<ul>
+<li>Engine switch (#124): GET/PUT /tts/engine with probe-cache invalidation</li>
+<li>Watchlist last_error surfacing (#149) and honest dns error messages</li>
+<li>PWA shell phase 1 (#138/DUE-016): manifest, service worker, offline page</li>
+<li>Template applied feedback (#136), guided-setup clarity lines (#137)</li>
+<li>seed-qa.sh fixture for data-dependent audit checks (#132)</li>
+<li>restart-api.sh guard: refuses restarts while jobs render</li>
+<li>Session 7 coordination: parallel agent sessions for business plan, UI copy, OSS hardening</li>
+<li>Business plan: Hybrid monetization model, European voices as payment trigger, 3-phase GTM</li>
+<li>OSS hardening: Dockerfile, Dockerfile.web, docker-compose.yml, .env.example, deployment guide</li>
+</ul>
+<h4>Fixed</h4>
+<ul>
+<li>Go button dead: applyHash tracked by mount effect (untrack), scheme-less</li>
+</ul>
+<p>url normalization, optional piper engine blocking every job</p>
+<ul>
+<li>parse_feed: podcast feeds with urn guids (NPR), RDF/RSS 1.0 namespace,</li>
+</ul>
+<p>non-UTF-8 prologs, size cap truncates instead of discarding (20mb feeds)</p>
+<ul>
+<li>script provider: streaming decode bug, first-json-array raw_decode</li>
+</ul>
+<p>(digest chapters tail), LANGUAGES import in digest prompt</p>
+<ul>
+<li>Removed `&lt;br&gt;` from h1, changed &quot;Two voices&quot; to &quot;Voices&quot;</li>
+<li>Settings toggle restored to expand/collapse pair</li>
+<li>Library search label and empty state aligned with audit contract</li>
+<li>Duplicate settings panel removed</li>
+<li>Focus management after settings level toggle</li>
+<li>Source linking always visible in making-of view</li>
+</ul>
+<h4>Changed</h4>
+<ul>
+<li>Docs consolidation for v0.5 (see docs/ for the streamlined set)</li>
+<li>Version badge links to the development landing page (planned)</li>
+<li>UI copy rewritten: bold, direct, playful tone across all screens</li>
+<li>Library search label and empty state aligned with audit contract</li>
+<li>Settings toggle label restored to expand/collapse pair</li>
+<li>WCAG AA contrast fixes: green and voice-a light tokens darkened</li>
+</ul>
+</div>
+<div class="older-release">
+<h4 class="mono">v0.4.0</h4>
+<h4>Added</h4>
+<ul>
+<li>Watchlist automation: POST/DELETE /watchlist, background poller, UI WatchlistScreen</li>
+<li>Episode source serving at `/source` with making-of link</li>
+<li>Settings panel rework: flat L2 all-settings + L3 advanced expanders</li>
+<li>Explicit mode toggle (18+ global setting)</li>
+<li>YouTube transcript source support via yt-dlp</li>
+<li>FAQ screen with keyboard shortcuts documentation</li>
+</ul>
+<h4>Changed</h4>
+<ul>
+<li>Applied 10 UI/UX improvements from audit review</li>
+<li>Language auto-detection for voice selection</li>
+<li>YouTube title extraction for feed items</li>
+<li>Pasted text title generation</li>
+</ul>
+<h4>Fixed</h4>
+<ul>
+<li>Explicit field display</li>
+<li>HEAD request support</li>
+<li>Duplicate settings panels</li>
+<li>Dead modal removal</li>
+<li>Concurrency handling</li>
+<li>SSRF order in fetcher</li>
+</ul>
+</div>
+<div class="older-release">
+<h4 class="mono">v0.3.0</h4>
+<h4>Added</h4>
+<ul>
+<li>Initial release with core pipeline: script → voice → master</li>
+<li>Docker Compose setup for local development</li>
+<li>FastAPI backend with SQLite job store</li>
+<li>Svelte 5 frontend with Calm Grid design system</li>
+<li>Verification suite: 55 gates (Ruff, Pytest, Svelte-check, clean-worktree)</li>
+</ul>
+</div>
+</div>
+</details>
+</section>
+<footer class="foot">
+<a href="/" class="mono nav-back">← back to app</a>
+<span class="mono">vozonda v0.6.0 · local-first · no accounts · no cloud</span>
+</footer>
+</div>
+<script>
+(function() {
+const audio = document.getElementById('audio-elem');
+const playBtn = document.getElementById('play-btn');
+const playIcon = document.getElementById('play-icon');
+const pauseIcon = document.getElementById('pause-icon');
+const canvas = document.getElementById('wave-canvas');
+const timeReadout = document.getElementById('time-readout');
+const chapterItems = document.querySelectorAll('.chapter-item');
+const BARS = 160;
+let peaks = [];
+let phase = 0;
+let raf = 0;
+function fmt(s) {
+if (isNaN(s) || s < 0) return "00:00";
+const m = Math.floor(s / 60);
+const sec = Math.floor(s % 60);
+return (m < 10 ? "0" : "") + m + ":" + (sec < 10 ? "0" : "") + sec;
+}
+function initPeaks() {
+peaks = [];
+for (let i = 0; i < BARS; i++) {
+const v = 0.15 + 0.35 * Math.abs(Math.sin(i * 0.18) * Math.cos(i * 0.07)) + 0.2 * Math.sin(i * 0.4);
+peaks.push(Math.min(1, Math.max(0.1, v)));
+}
+if (audio && audio.currentSrc) {
+const peaksUrl = (audio.currentSrc.split('?')[0] || '').replace(/\.mp3$/, '.peaks.json');
+if (peaksUrl.endsWith('.peaks.json')) {
+fetch(peaksUrl).then(function(r) { return r.ok ? r.json() : null; }).then(function(data) {
+const arr = Array.isArray(data) ? data : (data && data.peaks);
+if (arr && arr.length) {
+const step = arr.length / BARS;
+peaks = [];
+for (let i = 0; i < BARS; i++) {
+const val = arr[Math.floor(i * step)] || 0.1;
+peaks.push(Math.min(1, Math.max(0.08, val)));
+}
+drawWave();
+}
+}).catch(function() {});
+}
+}
+}
+function drawWave() {
+if (!canvas) return;
+const rect = canvas.getBoundingClientRect();
+const dpr = window.devicePixelRatio || 1;
+canvas.width = rect.width * dpr;
+canvas.height = rect.height * dpr;
+const ctx = canvas.getContext('2d');
+if (!ctx) return;
+ctx.scale(dpr, dpr);
+const w = rect.width;
+const h = rect.height;
+ctx.clearRect(0, 0, w, h);
+const progress = audio && audio.duration ? (audio.currentTime / audio.duration) : 0;
+const gap = 2;
+const totalGaps = (BARS - 1) * gap;
+const barW = Math.max(1, (w - totalGaps) / BARS);
+const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+const playedColor = isDark ? '#48bb78' : '#2f855a';
+const unplayedColor = isDark ? '#766e58' : '#8f8776';
+for (let i = 0; i < BARS; i++) {
+const x = i * (barW + gap);
+const barProgress = i / BARS;
+let amp = peaks[i] || 0.2;
+if (audio && !audio.paused) {
+amp = Math.min(1, Math.max(0.08, amp + 0.12 * Math.sin(phase + i * 0.25)));
+}
+const barH = Math.max(3, amp * (h - 8));
+const y = (h - barH) / 2;
+ctx.fillStyle = barProgress <= progress ? playedColor : unplayedColor;
+ctx.fillRect(x, y, barW, barH);
+}
+}
+function tick() {
+if (audio && !audio.paused) {
+phase += 0.15;
+drawWave();
+raf = requestAnimationFrame(tick);
+}
+}
+function updateActiveChapter() {
+if (!audio) return;
+const current = audio.currentTime;
+let activeIdx = 0;
+chapterItems.forEach(function(item, idx) {
+const sec = parseFloat(item.getAttribute('data-seconds') || '0');
+if (current >= sec) {
+activeIdx = idx;
+}
+});
+chapterItems.forEach(function(item, idx) {
+if (idx === activeIdx) {
+item.classList.add('active');
+} else {
+item.classList.remove('active');
+}
+});
+}
+if (playBtn && audio) {
+playBtn.addEventListener('click', function() {
+if (audio.paused) {
+audio.play().then(function() {
+playBtn.classList.add('playing');
+playIcon.classList.add('hidden');
+pauseIcon.classList.remove('hidden');
+cancelAnimationFrame(raf);
+raf = requestAnimationFrame(tick);
+}).catch(function() {});
+} else {
+audio.pause();
+playBtn.classList.remove('playing');
+playIcon.classList.remove('hidden');
+pauseIcon.classList.add('hidden');
+cancelAnimationFrame(raf);
+drawWave();
+}
+});
+audio.addEventListener('timeupdate', function() {
+if (timeReadout) {
+timeReadout.innerText = fmt(audio.currentTime);
+}
+drawWave();
+updateActiveChapter();
+});
+audio.addEventListener('ended', function() {
+playBtn.classList.remove('playing');
+playIcon.classList.remove('hidden');
+pauseIcon.classList.add('hidden');
+cancelAnimationFrame(raf);
+drawWave();
+});
+}
+if (canvas && audio) {
+function seek(e) {
+const rect = canvas.getBoundingClientRect();
+const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+if (audio.duration) {
+audio.currentTime = pos * audio.duration;
+drawWave();
+updateActiveChapter();
+}
+}
+canvas.addEventListener('click', seek);
+let dragging = false;
+canvas.addEventListener('mousedown', function(e) { dragging = true; seek(e); });
+window.addEventListener('mousemove', function(e) { if (dragging) seek(e); });
+window.addEventListener('mouseup', function() { dragging = false; });
+canvas.addEventListener('touchstart', function(e) { dragging = true; seek(e); }, { passive: true });
+window.addEventListener('touchmove', function(e) { if (dragging) seek(e); }, { passive: true });
+window.addEventListener('touchend', function() { dragging = false; });
+}
+window.seekChapter = function(seconds) {
+if (audio) {
+audio.currentTime = seconds;
+if (audio.paused) {
+audio.play().then(function() {
+if (playBtn) {
+playBtn.classList.add('playing');
+playIcon.classList.add('hidden');
+pauseIcon.classList.remove('hidden');
+}
+cancelAnimationFrame(raf);
+raf = requestAnimationFrame(tick);
+}).catch(function() {});
+}
+drawWave();
+updateActiveChapter();
+}
+};
+window.copySnippet = function(btn, text) {
+if (!text) return;
+navigator.clipboard.writeText(text).then(function() {
+const orig = btn.innerHTML;
+btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> copied!';
+btn.classList.add('copied');
+setTimeout(function() {
+btn.innerHTML = orig;
+btn.classList.remove('copied');
+}, 1800);
+}).catch(function() {
+btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> copied!';
+setTimeout(function() { btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> copy'; }, 1800);
+});
+};
+window.addEventListener('resize', drawWave);
+if (window.matchMedia) {
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawWave);
+}
+initPeaks();
+drawWave();
+})();
+</script>
+</body>
+</html>

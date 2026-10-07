@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    name: api lint + tests
+    # local job image shared by all repos (sovereign-ops infra/act-runner/ci-image): uv, Python 3.13, ffmpeg and
+    # poppler are baked in and actions/checkout comes from the Gitea mirror (runner github_mirror), so a run needs
+    # nothing from github.com. .github/workflows/ci.yml stays the public GitHub variant.
+    runs-on: local-ci
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - name: sync deps
+        # the CPU voices and the MCP server are part of the product and of the tests;
+        # the GPU extra (torch, qwen-tts) is not installed here and its tests skip.
+        # Without extras every run since #313 failed on 'No module named mcp/numpy'.
+        run: uv sync --frozen --extra tts-kokoro --extra tts-piper --extra mcp
+      - name: ruff
+        run: uv run ruff check src
+      - name: pytest
+        run: uv run pytest -q
+
+  web:
+    name: web check + build
+    runs-on: local-ci
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - name: svelte-check
+        run: npx svelte-check
+      - name: build
+        run: npm run build

@@ -1,0 +1,71 @@
+[project]
+name = "vozonda-api"
+version = "0.6.0"
+description = "Vozonda orchestrator: url to two-voice podcast dialogue"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "httpx>=0.28",
+    "pydantic>=2.10",
+    "readability-lxml>=0.8.4.1",
+    "lxml_html_clean>=0.4",
+    "coincurve>=21.0.0",
+    "pillow>=10",
+]
+
+[project.optional-dependencies]
+tts-qwen = [
+    "torch>=2.2.0",
+    "soundfile>=0.12.0",
+    "numpy>=1.26.0",
+    "qwen-tts>=0.1.0",
+]
+tts-piper = [
+    "piper-tts>=1.2.0",
+]
+tts-kokoro = [
+    "kokoro-onnx>=0.4",
+    "soundfile>=0.12",
+    "numpy>=1.26",
+]
+tts = ["vozonda-api[tts-qwen]", "vozonda-api[tts-piper]", "vozonda-api[tts-kokoro]"]
+mcp = [
+    "mcp>=1.9",
+]
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=0.24.0",
+    "pytest-xdist>=3.5.0",
+    "ruff>=0.16.4",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vozonda_api"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore:.*starlette\\.testclient.*",
+    "ignore:.*httpx.*",
+    "ignore::DeprecationWarning",
+]
+
+[project.scripts]
+vozonda-api = "vozonda_api.main:serve"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+ignore = ["BLE001", "S112", "S110"]

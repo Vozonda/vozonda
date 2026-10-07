@@ -1,0 +1,25 @@
+# Vozonda quality benchmark: fixed sources, each also rendered by NotebookLM
+# (Audio Overview, default settings, English unless noted) as the reference.
+# Chosen to stress different skills; all are own content or openly licensed.
+sources:
+  - id: s1-fabrication-gate
+    url: https://sovgrid.org/blog/the-quality-gate-that-rewards-fabrication
+    kind: narrative blog post (own content)
+    stresses: story arc, a twist to land, first-person source retold by two hosts
+  - id: s2-lightning-network
+    url: https://en.wikipedia.org/wiki/Lightning_Network
+    kind: encyclopedic, technical
+    stresses: explaining mechanisms simply without errors, avoiding a lecture
+  - id: s3-attention-paper
+    url: https://arxiv.org/pdf/1706.03762
+    kind: research paper (PDF)
+    stresses: PDF ingestion, dense math, choosing what matters
+  - id: s4-podcast-de
+    url: https://de.wikipedia.org/wiki/Podcast
+    kind: German encyclopedic
+    language: de
+    stresses: German script and voices, idiom, pronunciation of English loanwords
+  - id: s5-nostr-short
+    url: https://en.wikipedia.org/wiki/Nostr
+    kind: short article
+    stresses: thin material; must not pad with invented facts

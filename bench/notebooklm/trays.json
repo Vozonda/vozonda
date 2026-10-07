@@ -1,0 +1,31 @@
+{
+  "about": "Reference trays for the NotebookLM comparison (Vozonda docs/plan-multisource-tray.md section 6). Public sources only, so nothing private goes to Google. Notes are given word for word; screenshots are made by make_screenshots.py.",
+  "trays": [
+    {
+      "id": "T1",
+      "name": "paper + explainer + own note",
+      "sources": [
+        {"kind": "pdf", "url": "https://arxiv.org/pdf/1706.03762", "role": "main"},
+        {"kind": "article", "url": "https://jalammar.github.io/illustrated-transformer/", "role": "main"},
+        {"kind": "note", "role": "context", "text": "Background for the hosts: the listener builds small tools at home and wants to know why attention made recurrent networks obsolete, and what the paper itself says it did not solve."}
+      ]
+    },
+    {
+      "id": "T2",
+      "name": "video + long paper",
+      "sources": [
+        {"kind": "youtube", "url": "https://www.youtube.com/watch?v=wjZofJX0v4M", "role": "main"},
+        {"kind": "pdf", "url": "https://arxiv.org/pdf/2005.14165", "role": "main", "note": "38k words: far over the budget, so it exercises condensing"}
+      ]
+    },
+    {
+      "id": "T3",
+      "name": "two screenshots + own note",
+      "sources": [
+        {"kind": "image", "file": "tray3-table.png", "role": "main"},
+        {"kind": "image", "file": "tray3-costs.png", "role": "main"},
+        {"kind": "note", "role": "main", "text": "Question for the hosts: does running a 35B model at home really beat a cloud API on cost once the hardware is paid off, and what do the numbers leave out (noise, time, model quality, privacy)?"}
+      ]
+    }
+  ]
+}

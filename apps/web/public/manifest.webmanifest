@@ -1,0 +1,32 @@
+{
+  "name": "Vozonda",
+  "short_name": "Vozonda",
+  "description": "Vozonda reads them, voices make waves, you listen.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "categories": ["news", "podcasts"],
+  "theme_color": "#4a7300",
+  "background_color": "#faf6ef",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

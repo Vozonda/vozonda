@@ -1,0 +1,32 @@
+# Build stage: compile Svelte 5 frontend with Vite
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies
+COPY apps/web/package.json apps/web/package-lock.json ./
+RUN npm ci
+
+# Copy web source and build static bundle
+COPY apps/web/ ./
+RUN npm run build
+
+# Production stage: serve static assets with Nginx and proxy API requests
+FROM nginx:alpine
+
+# Configure Nginx template processing for VOZONDA_API_URL
+ENV NGINX_ENVSUBST_FILTER="VOZONDA_API_URL" \
+    VOZONDA_API_URL="http://api:8787"
+
+# Copy custom nginx configuration template
+COPY apps/web/nginx.conf.template /etc/nginx/templates/default.conf.template
+
+# Copy built frontend assets
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=5s --retries=3 \
+    CMD wget -q --spider http://127.0.0.1:80/ || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]
