@@ -1,0 +1,27 @@
+# Weekly dependency updates, grouped so each ecosystem opens at most one PR
+# for minor and patch bumps. Major bumps arrive as separate PRs.
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /apps/api
+    schedule:
+      interval: weekly
+    groups:
+      api-minor:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /apps/web
+    schedule:
+      interval: weekly
+    groups:
+      web-minor:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
