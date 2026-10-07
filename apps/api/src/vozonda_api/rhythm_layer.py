@@ -9,6 +9,9 @@ does not need a model:
 - when quick reactions are too few, the other host reacts after a long turn with a
   varied back-channel from a short list (English and German only; other languages get
   no inserted words)
+- a surprise reaction ("Wait, really?", "Huh.") only follows a turn that gives it a reason
+  (a number, a question, an exclamation), never a summary, never the last two turns, never
+  another surprise; a misplaced one becomes a neutral back-channel (2026-10-07)
 - quick reactions the model wrote are never removed: short interjections ("mhm",
   "krass", "wie geil ist das denn") make the talk human and many styles want lots of
   them (operator decision 2026-10-02); the layer only adds and splits
@@ -30,6 +33,18 @@ BACK_CHANNELS = {
     "en": ["Right.", "Huh.", "Oh, nice.", "Wait, really?", "Exactly.", "Okay.", "Oh, wow.", "Interesting.", "Sure.", "Hm, fair.", "No way."],
     "de": ["Genau.", "Echt?", "Wie geil ist das denn?", "Ach so.", "Stimmt.", "Okay.", "Krass.", "Interessant.", "Ja, klar.", "Hm, fair.", "Wirklich?"],
 }
+# the back-channels that signal surprise: they need something surprising before them
+SURPRISE = {
+    "en": {"huh", "oh wow", "wait really", "no way"},
+    "de": {"echt", "wie geil ist das denn", "krass", "wirklich"},
+}
+_REASON = re.compile(
+    r"\d|\?|!|\b(?:million|billion|thousand|hundred|percent|millionen|milliarden|tausend|hundert|prozent)\b",
+    re.IGNORECASE)
+_SUMMARY = re.compile(
+    r"to wrap (?:this|it|things) up|to sum (?:this |it )?up|in summary|to recap|in short|bottom line"
+    r"|zusammenfassend|zusammengefasst|kurz gesagt|unterm strich|um es zusammenzufassen",
+    re.IGNORECASE)
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-ZÄÖÜ0-9\"'])")
 
 
@@ -129,6 +144,7 @@ def apply_rhythm_layer(lines: list[dict], p: Profile | None, language: str = "en
 
     if not pool:  # no back-channels for this language: never split or insert
         return out
+    surprise = SURPRISE.get((language or "en").split("-")[0].lower(), set())
 
     def interleave(ln: dict, parts: list[str]) -> list[dict]:
         """A long turn becomes its parts with the other host reacting in between."""
@@ -163,4 +179,26 @@ def apply_rhythm_layer(lines: list[dict], p: Profile | None, language: str = "en
             break
         i, parts = best
         out[i:i + 1] = interleave(out[i], parts)
+    return _place_surprises(out, pool, surprise, rng, _key)
+
+
+def _is_surprise(line: dict, surprise: set[str], key) -> bool:
+    return _quick(line) and key(line["text"]) in surprise
+
+
+def _place_surprises(out: list[dict], pool: list[str], surprise: set[str], rng: random.Random,
+                     key) -> list[dict]:
+    """Swap a surprise reaction that has no reason for a neutral back-channel (same turn count)."""
+    neutral = [b for b in pool if key(b) not in surprise]
+    if not neutral:
+        return out
+    for i, ln in enumerate(out):
+        if not _is_surprise(ln, surprise, key):
+            continue
+        prev = out[i - 1]["text"] if i else ""
+        if (i >= len(out) - 2 or not _REASON.search(prev) or _SUMMARY.search(prev)
+                or (i and _is_surprise(out[i - 1], surprise, key))):
+            near = {key(out[j]["text"]) for j in range(max(0, i - 4), min(len(out), i + 5))}
+            fresh = [b for b in neutral if key(b) not in near] or neutral
+            out[i] = {**ln, "text": rng.choice(fresh)}
     return out

@@ -111,3 +111,48 @@ def test_never_inserts_a_back_channel_the_hosts_already_use():
     inserted = [ln["text"] for ln in out if ln not in src and ln["text"] in BACK_CHANNELS["en"]]
     assert inserted and "Interesting." not in inserted and "Exactly." not in inserted
     assert len(set(inserted)) == len(inserted), "each inserted reaction is used once while the pool lasts"
+
+
+def _surprise_keys(lang="en"):
+    from vozonda_api.rhythm_layer import SURPRISE
+    return SURPRISE[lang]
+
+
+def _is_surprise(text, lang="en"):
+    import re
+    return re.sub(r"[^\w ]", "", text).strip().lower() in _surprise_keys(lang)
+
+
+def _script(turns):
+    return [{"speaker": "AB"[i % 2], "text": t} for i, t in enumerate(turns)]
+
+
+_FILLER = [f"Here is point {i} with {_w(14)} and a plain fact." for i in range(5)]
+
+
+def test_no_surprise_after_a_summary_or_in_the_last_two_turns():
+    p = PROFILES["balanced"]
+    src = _script([*_FILLER, "So, to wrap this up, there are many wallets.", "Wait, really?",
+                   "Yes, that is the idea.", "Huh.", "Oh, wow."])
+    out = apply_rhythm_layer(src, p, "en", seed=1)
+    assert len(out) == len(src)
+    assert not any(_is_surprise(ln["text"]) for ln in out[5:])
+    assert [ln["speaker"] for ln in out] == [ln["speaker"] for ln in src]
+
+
+def test_surprise_needs_a_reason_and_never_follows_another_surprise():
+    p = PROFILES["balanced"]
+    src = _script([*_FILLER, "A plain factual statement.", "Huh.", "The fee is 3 percent per hop.",
+                   "Oh, wow.", "No way.", *_FILLER[:3]])
+    out = apply_rhythm_layer(src, p, "en", seed=2)
+    texts = [ln["text"] for ln in out]
+    assert texts[6] != "Huh." and not _is_surprise(texts[6])
+    assert texts[8] == "Oh, wow."  # after a number
+    assert not _is_surprise(texts[9])  # right after another surprise
+    assert all(not (_is_surprise(a) and _is_surprise(b)) for a, b in pairwise(texts))
+
+
+def test_surprise_after_a_question_is_kept():
+    src = _script([*_FILLER, "Did you know the fee can be zero?", "Wait, really?", *_FILLER])
+    out = apply_rhythm_layer(src, PROFILES["balanced"], "en", seed=3)
+    assert out[6]["text"] == "Wait, really?"
