@@ -303,3 +303,46 @@ def test_title_generation_validates_length_bounds(env, monkeypatch):
         _run(store2, job_id2)
     job2 = store2.get(job_id2)
     assert job2["title"] == "x" * 90
+
+def test_combine_script_prompt_has_no_joined_title(env, monkeypatch):
+    """The script prompt of a combined job never carries the ' + '-joined title."""
+    store = env
+    job_id = "test-combine-prompt-title"
+    store.create(
+        job_id,
+        "digest:test-combine-prompt-title",
+        digest=True,
+        digest_sources=["https://btc.example/wp", "https://eth.example/wp"],
+        combine=True,
+    )
+    script_content = '[{"speaker":"A","text":"One."},{"speaker":"B","text":"Two."},{"speaker":"A","text":"Three."},{"speaker":"B","text":"Four."}]\nDESCRIPTION: d'
+    prompts: list[str] = []
+
+    inner = _script_result(script_content, "")
+
+    async def fake_script_call(*, prompt: str, **kwargs):
+        prompts.append(prompt)
+        return await inner(prompt=prompt, **kwargs)
+
+    async def mock_chat_completion(prov, prompt, max_tokens=4096):
+        return "A fine generated title"
+
+    async def fake_fetch(url):
+        return f"<html>{url}</html>"
+
+    async def fake_extract(url, html=None, **kwargs):
+        name = "Bitcoin Whitepaper" if "btc" in url else "Ethereum Whitepaper"
+        return name, f"{name} text. " + "word " * 400, None
+
+    monkeypatch.setattr(pipeline, "script_call", fake_script_call)
+    monkeypatch.setattr(pipeline, "_chat_completion", mock_chat_completion)
+    monkeypatch.setattr(pipeline, "fetch_article", fake_fetch)
+    monkeypatch.setattr(pipeline, "_extract", fake_extract)
+
+    _run(store, job_id)
+
+    assert store.get(job_id)["state"] == "done"
+    assert prompts
+    for p in prompts:
+        assert "Bitcoin Whitepaper + Ethereum Whitepaper" not in p
+        assert "This episode is titled" not in p
