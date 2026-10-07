@@ -134,6 +134,8 @@ def _digest_env(tmp_path, monkeypatch, chat):
     monkeypatch.setattr(pipeline, "_voice", fake_voice)
     monkeypatch.setattr(pipeline, "_master", fake_master)
     monkeypatch.setattr(pipeline, "_attach_insights", lambda *a, **k: asyncio.sleep(0))
+    # the episode title call is not a condense call: keep it out of the chat count
+    monkeypatch.setattr(pipeline, "_generate_episode_title", lambda *a, **k: asyncio.sleep(0))
     from vozonda_api.jobs import JobStore as JS
 
     return JS(), seen

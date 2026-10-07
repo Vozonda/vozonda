@@ -877,6 +877,31 @@ def _normalize_turns(lines_raw: list | None, fmt: str, n_hosts: int, *, min_turn
     return out
 
 
+_TITLE_SUFFIX_RE = re.compile(r"\s+(?:[-\u2013\u2014|:]|::)\s+[^-\u2013\u2014|:]{2,40}$")
+_SITE_WORDS_RE = re.compile(
+    r"\b(?:nasa|wikipedia|youtube|medium|bbc|cnn|news|science|blog|times|post|magazine|"
+    r"guardian|reuters|site|home|official|online|press|journal|daily|network)\b|\.(?:com|org|net|gov|edu|io)\b",
+    re.IGNORECASE,
+)
+
+
+def clean_title(title: str) -> str:
+    """Drop a trailing site suffix (' - NASA Science', ' | Site', ' - Wikipedia')."""
+    t = (title or "").strip()
+    for _ in range(2):
+        m = _TITLE_SUFFIX_RE.search(t)
+        if not m or not _SITE_WORDS_RE.search(m.group(0)) or len(t) - len(m.group(0)) < 4:
+            break
+        t = t[: m.start()].rstrip()
+    return t
+
+
+def _digest_fallback_title(sections: list[dict[str, Any]]) -> str:
+    """Placeholder title until the script exists and names the episode."""
+    first = clean_title(str(sections[0]["title"]))
+    return f"Digest: {first}" + (f" + {len(sections) - 1} more" if len(sections) > 1 else "")
+
+
 def _digest_word_target(n: int) -> int:
     return _DIGEST_TARGETS.get(n, _DIGEST_WORDS_MAX)
 
@@ -939,7 +964,7 @@ async def _script_digest(
     _dg_roles = [str(s.get("role") or "main") for s in sections]
     _dg_shares = budget.allocate(_dg_lengths, _dg_roles, prompt_budget)
     for s, share in zip(sections, _dg_shares):
-        title_escaped = s["title"].replace("[", "(").replace("]", ")")
+        title_escaped = clean_title(s["title"]).replace("[", "(").replace("]", ")")
         body_truncated = s["body"][:share]
         # the bracket number is the citation index: a script line carries it in "src"
         num = s.get("position", s["index"]) + 1
@@ -966,8 +991,15 @@ async def _script_digest(
     if title:
         title_line = f"This episode is titled '{title}'. Name the episode in the outro.\n"
 
+    no_letter_line = (
+        "Hosts never call themselves or each other 'Host A', 'Host B' or by a speaker letter; "
+        "the letters are labels only. Use the given names or no name at all.\n"
+        if fmt != "narration"
+        else ""
+    )
+
     prompt = (
-        f"{lang_line}{_focus_block(focus)}{trio_line}{names_line}{title_line}{adult_block}"
+        f"{lang_line}{_focus_block(focus)}{trio_line}{names_line}{no_letter_line}{title_line}{adult_block}"
         f"You are scripting a DIGEST episode covering {n} distinct stories.\n"
         f"Total spoken length target: ~{target_words} words.\n"
         f"Per-story target: ~{per_story_words} words per section.\n\n"
@@ -1045,9 +1077,9 @@ async def _script_digest(
             cum_words = 0
             for i, sec in enumerate(sections):
                 # Use extracted chapters data if available
-                title = sec["title"]
+                title = clean_title(sec["title"])
                 if chapters_data and i < len(chapters_data):
-                    title = chapters_data[i].get("title", title)
+                    title = clean_title(chapters_data[i].get("title", title))
                 chapters_out.append({
                     "index": i,
                     "title": title,
@@ -2536,6 +2568,7 @@ async def _run_digest_inner(
                 failed_urls.append(url)
                 continue
             title, body, sec_og = await _extract(url, html=html)
+            title = clean_title(title)
             sections.append({"index": len(sections), "position": i, "title": title, "url": url, "body": body, "role": _roles[i]})
             if sec_og and not sections[0].get("_og"):
                 sections[0]["_og"] = sec_og
@@ -2570,9 +2603,7 @@ async def _run_digest_inner(
             _truncated.append({"position": s["position"], "kept": len(_new_body), "total": total})
 
     # Digest title: "Digest: <first title> + N more"
-    digest_title = f"Digest: {sections[0]['title']}"
-    if len(sections) > 1:
-        digest_title += f" + {len(sections) - 1} more"
+    digest_title = _digest_fallback_title(sections)
     store.update(job_id, title=digest_title)
 
     # #155: download og_image or generate template cover for digest
@@ -2681,6 +2712,15 @@ async def _run_digest_inner(
         script=[_stored_line(ln, host_names) for ln in lines],
         chapters=chapters,
     )
+
+    # episode title written from the script, like for single episodes
+    try:
+        src_titles = " | ".join(str(s["title"]) for s in sections)
+        new_title = await _generate_episode_title(store, job_id, lines, src_titles, llm_chain)
+        if new_title:
+            store.update(job_id, title=new_title)
+    except Exception:
+        logger.warning("digest title generation failed for job %s", job_id, exc_info=True)
 
     # Run digest lint (pass digest=True for digest-specific checks)
     try:
