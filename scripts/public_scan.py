@@ -88,7 +88,6 @@ EMAIL_ALLOWLIST_PATHS = {
     "apps/api/tests/test_config_paths.py",
     "apps/api/tests/test_security_fixes.py",
     "apps/api/tests/test_quickstart_config.py",
-    "CODE_OF_CONDUCT.md",
     "README.md",
     "apps/api/src/vozonda_api/mcp_server.py",
     "apps/api/src/vozonda_api/nostr_zaps.py",

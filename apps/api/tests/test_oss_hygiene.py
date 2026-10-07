@@ -36,12 +36,11 @@ def test_security_has_required_sections() -> None:
 
 
 def test_security_no_email() -> None:
-    """SECURITY.md must not contain email addresses (reports go through GitHub security advisories)."""
-    content = _read(SECURITY_MD)
+    """SECURITY.md and CODE_OF_CONDUCT.md must not contain email addresses (reports go through GitHub)."""
     email_re = re.compile(r"\S+@\S+\.\S+")
-    matches = [m.strip("*") for m in email_re.findall(content)]
-    unexpected = list(matches)
-    assert unexpected == [], f"SECURITY.md must not contain unexpected email addresses, found: {unexpected}"
+    for path in (SECURITY_MD, REPO_ROOT / "CODE_OF_CONDUCT.md"):
+        matches = [m.strip("*") for m in email_re.findall(_read(path))]
+        assert matches == [], f"{path.name} must not contain email addresses, found: {matches}"
 
 
 def test_security_github_advisories() -> None:
