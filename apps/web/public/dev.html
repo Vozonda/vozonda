@@ -935,60 +935,17 @@ Your browser does not support the audio element.
 <div class="feature-cards-grid">
 <div class="feature-card">
 <div class="fc-head">
-<span class="badge version">Changed</span>
-<strong class="fc-title">Complete brand rebrand to Vozonda (Voz = Voice, Onda = Wave; VOZONDA-REBRAND) with zero breaking changes for existing installs, feeds, or local storage.</strong>
+<span class="badge fixed">Fixed</span>
+<strong class="fc-title">digest</strong>
 </div>
-</div>
-<div class="feature-card">
-<div class="fc-head">
-<span class="badge version">Changed</span>
-<strong class="fc-title">VOZONDA_* env vars, automatic browser settings migration, podcast feeds keep their GUIDs.</strong>
-</div>
-</div>
-<div class="feature-card">
-<div class="fc-head">
-<span class="badge highlight">Added</span>
-<strong class="fc-title">Source objects for the coming source tray</strong>
-</div>
-<p class="fc-desc">a link, note or uploaded file (PDF, JPG, PNG, WebP, TXT, MD) is read once when it is added and shows its real kind (from what the server sent, not the link), title, size and language, or an error with a next step (paywall, PDF without text layer, no subtitles, ...). Uploads keep only their extracted text; images are re-encoded (no EXIF) before the local vision model reads them; unused sources expire after 24 h. `POST /sources`, `POST /sources/upload`, `GET|PATCH|DELETE /sources/{id}`, `POST /sources/{id}/retry`; `POST /jobs` takes `sources` (ids with role main/context), and every episode keeps a copy of its sources: `GET /jobs/{id}/sources` (public: uploads by title only) and `POST /jobs/{id}/sources/clone` for create variant (same text, no re-fetch)</p>
-</div>
-<div class="feature-card">
-<div class="fc-head">
-<span class="badge highlight">Added</span>
-<strong class="fc-title">Distribution per show</strong>
-</div>
-<p class="fc-desc">each show picks its reach (private, podcast apps via RSS, Nostr only, or both); &quot;Nostr only&quot; turns the show&#x27;s RSS feed off. `GET /distribution`, `PUT /shows/{slug}/rss`, user guide in `docs/distribution.md`</p>
+<p class="fc-desc">hosts no longer call themselves &quot;Host A&quot;, chapter and fallback titles drop site suffixes (&quot; - NASA Science&quot;, &quot; | Site&quot;), and the episode title is written from the script like for single episodes (#7)</p>
 </div>
 <div class="feature-card">
 <div class="fc-head">
 <span class="badge fixed">Fixed</span>
-<strong class="fc-title">Episode covers were never stored (since 0.5.0 every store call raised and was only logged); the library and the player show them, and the library shows the audio length, not the render time</strong>
+<strong class="fc-title">script</strong>
 </div>
-</div>
-<div class="feature-card">
-<div class="fc-head">
-<span class="badge fixed">Fixed</span>
-<strong class="fc-title">A truncated LLM answer no longer ends a script mid-sentence</strong>
-</div>
-<p class="fc-desc">the half-written turn is dropped</p>
-</div>
-<div class="feature-card">
-<div class="fc-head">
-<span class="badge fixed">Removed</span>
-<strong class="fc-title">The per-turn TURN PLAN and the full-rewrite RHYTHM CORRECTION pass (replaced by the script contract, the role repair and the rhythm layer)</strong>
-</div>
-</div>
-<div class="feature-card">
-<div class="fc-head">
-<span class="badge fixed">Removed</span>
-<strong class="fc-title">Piper voice `lessac` (trained on a non-commercial corpus)</strong>
-</div>
-</div>
-<div class="feature-card">
-<div class="fc-head">
-<span class="badge fixed">Security</span>
-<strong class="fc-title">urllib3 2.8.0; transformers stays at 4.57.3 until qwen-tts unpins it (see docs/audits/2026-10-security.md)</strong>
-</div>
+<p class="fc-desc">surprise reactions (&quot;Wait, really?&quot;, &quot;Huh.&quot;) no longer follow a summary, a turn without a reason, another surprise, or land in the last two turns; the rhythm layer swaps them for a neutral back-channel (#3)</p>
 </div>
 </div>
 </div>
@@ -1036,10 +993,188 @@ Your browser does not support the audio element.
 </details>
 <details class="accordion">
 <summary class="mono">
-<span>Changelog Archive (3 previous releases)</span>
+<span>Changelog Archive (4 previous releases)</span>
 <span class="caret">▾</span>
 </summary>
 <div class="accordion-body">
+<div class="older-release">
+<h4 class="mono">v0.6.0</h4>
+<h4>Changed</h4>
+<ul>
+<li>Complete brand rebrand to Vozonda (Voz = Voice, Onda = Wave; VOZONDA-REBRAND) with zero breaking changes for existing installs, feeds, or local storage.</li>
+<li>VOZONDA_* env vars, automatic browser settings migration, podcast feeds keep their GUIDs.</li>
+</ul>
+<h4>Added</h4>
+<ul>
+<li>Source objects for the coming source tray: a link, note or uploaded file (PDF, JPG, PNG,</li>
+</ul>
+<p>WebP, TXT, MD) is read once when it is added and shows its real kind (from what the server</p>
+<p>sent, not the link), title, size and language, or an error with a next step (paywall, PDF</p>
+<p>without text layer, no subtitles, ...). Uploads keep only their extracted text; images are</p>
+<p>re-encoded (no EXIF) before the local vision model reads them; unused sources expire after</p>
+<p>24 h. `POST /sources`, `POST /sources/upload`, `GET|PATCH|DELETE /sources/{id}`,</p>
+<p>`POST /sources/{id}/retry`; `POST /jobs` takes `sources` (ids with role main/context), and</p>
+<p>every episode keeps a copy of its sources: `GET /jobs/{id}/sources` (public: uploads by title</p>
+<p>only) and `POST /jobs/{id}/sources/clone` for create variant (same text, no re-fetch)</p>
+<ul>
+<li>Distribution per show: each show picks its reach (private, podcast apps via RSS, Nostr only,</li>
+</ul>
+<p>or both); &quot;Nostr only&quot; turns the show&#x27;s RSS feed off. `GET /distribution`,</p>
+<p>`PUT /shows/{slug}/rss`, user guide in `docs/distribution.md`</p>
+<ul>
+<li>Nostr publishing endpoints: per-show switch with an explicit public confirmation, key backup</li>
+</ul>
+<p>(nsec export), publish status and retry per episode, best-effort deletion (NIP-09 + BUD-02)</p>
+<p>that also runs when a published episode is deleted</p>
+<ul>
+<li>Settings follow how an episode is made: sources, script (the writing model first), voice,</li>
+</ul>
+<p>shows &amp; distribution (each show with its identity, reach, feed URL and Nostr key), player,</p>
+<p>system. One page width for every screen</p>
+<ul>
+<li>Script contract per style: the style&#x27;s role split and rhythm in numbers open the prompt and</li>
+</ul>
+<p>a one-line reminder closes it; a targeted role repair rewrites only the few turns where one</p>
+<p>host talks too much (code picks the turns and the speakers, the model writes two parts); a</p>
+<p>deterministic rhythm layer splits monologues at sentence ends and adds varied back-channels</p>
+<p>(English and German) and never removes an interjection the model wrote</p>
+<ul>
+<li>Style registry (`style_registry.py`): one place per style for order, docs, hook brief, script</li>
+</ul>
+<p>params, template, TTS speaker instructs, UI group and icon; `GET /meta` serves `style_meta`;</p>
+<p>guide in `docs/adding-a-style.md`</p>
+<ul>
+<li>Nostr publishing backend, opt-in per show: a keypair per show, NIP-F4 show and episode events,</li>
+</ul>
+<p>Blossom upload with mirrors, relay client per NIP-01/42 (endpoints and UI still to come)</p>
+<ul>
+<li>MCP tools to set up a watchlist that becomes a podcast</li>
+<li>Terminal-style progress indicator and a cancel button for running episodes</li>
+<li>Scheduled watchlist digests: `daily@HH:MM` / `weekly@&lt;day&gt;@HH:MM` per watchlist with timezone,</li>
+</ul>
+<p>one digest per slot, a missed slot caught up once, retry on the next poll after a feed failure,</p>
+<p>manual check forces a digest</p>
+<ul>
+<li>Cross-watchlist dedupe: canonical URLs (tracking params, AMP, www) and near-duplicate titles</li>
+</ul>
+<p>across all feeds for 72 h; titles that differ in a number count as different stories</p>
+<ul>
+<li>Kokoro-82M is the CPU quickstart engine (Docker default) with Piper rendering the languages</li>
+</ul>
+<p>Kokoro lacks (German and others); model files download on first use</p>
+<ul>
+<li>SECURITY.md, GitHub CI workflow, THIRD_PARTY_NOTICES.md, security/license/bug-hunt audits</li>
+</ul>
+<p>under docs/audits/</p>
+<ul>
+<li>Player ambient blur aura &amp; cover art: dynamic backdrop aura reflecting episode cover colors (blur 52px, saturate 140%, brightness 0.35), 1:1 artwork thumbnail, and on-demand Pillow cover fallback on API</li>
+<li>Interactive chapter navigation: structured chapter list for digest episodes with index numbers, active state markers, timestamp offsets, and seek interaction</li>
+<li>Library management &amp; bulk deletion: quiet &#x27;manage&#x27; mode toggle, select-all checkbox, row checkboxes, bulk &#x27;delete selected&#x27; / &#x27;delete all&#x27; with safe inline confirmation, and hover quick-delete per episode; server unlinks media files on deletion</li>
+<li>Watchlist UI polish: harmonized action toolbar (.action-btn), repositioned feed link creation form to top with benefit-focused copy, and 5-item recent auto-episodes shelf</li>
+<li>Research mode (#135): discover/triage/sub-fetch stages between fetch</li>
+</ul>
+<p>and extract - link discovery, llm triage and synthesis pass on top of</p>
+<p>the digest plumbing</p>
+<ul>
+<li>Episode images (#155): og:image extraction with download, pillow</li>
+</ul>
+<p>template fallback cover, feed.xml itunes:image + per-item images,</p>
+<p>/img serving, upload endpoint, storage section in settings</p>
+<ul>
+<li>Media retention: GET /storage stats + POST /storage/purge (manual,</li>
+</ul>
+<p>write-auth, 360-day default threshold)</p>
+<ul>
+<li>GET /jobs filter, sort and search (#152/#153): style, language,</li>
+</ul>
+<p>format, full-text on title/url/description, sort by created_at/</p>
+<p>duration/title</p>
+<ul>
+<li>Per-language per-role default timbres (DUE-041): german uses the</li>
+</ul>
+<p>rating-5 accent-probe cast (dylan/sohee/uncle_fu), web applies</p>
+<p>defaults on language change until the user picks a voice</p>
+<ul>
+<li>Listen-view upgrades (#161-#164): mediasession api for</li>
+</ul>
+<p>lockscreen/smartwatch controls, playback resume, sleep timer with</p>
+<p>fade-out, turn deep-links</p>
+<ul>
+<li>Watchlist tune expander: voices + settings merged into one fold</li>
+</ul>
+<p>point, freshness dot, episode count, template picker with pacing</p>
+<p>presets, digest controls only in digest mode</p>
+<ul>
+<li>Template pacing presets visible on the compose tiles, template</li>
+</ul>
+<p>applied line + go button pulse signal on pick</p>
+<ul>
+<li>MP3 chapter embedding (DUE-011): id3/chapters tags so podcast apps</li>
+</ul>
+<p>show digest chapters natively</p>
+<h4>Fixed</h4>
+<ul>
+<li>Episode covers were never stored (since 0.5.0 every store call raised and was only logged);</li>
+</ul>
+<p>the library and the player show them, and the library shows the audio length, not the render</p>
+<p>time</p>
+<ul>
+<li>A truncated LLM answer no longer ends a script mid-sentence: the half-written turn is dropped</li>
+<li>An emptied custom prompt falls back to that style&#x27;s built-in prompt, not to balanced</li>
+<li>Show numbers are never reused (a new show could publish under a deleted show&#x27;s Nostr key);</li>
+</ul>
+<p>deleting a show no longer hides the others</p>
+<ul>
+<li>Nostr: the Blossom preflight is signed (every upload was refused before), uploads run off the</li>
+</ul>
+<p>event loop, delete tokens carry the BUD-11 expiration and a server tag, no invalid `p` tag,</p>
+<p>show metadata is not republished after a restart, default Blossom servers accept long episodes</p>
+<ul>
+<li>A show from before the RSS switch keeps its feed</li>
+<li>Pillow is a declared dependency and the Docker image has `pdftotext` (PDF sources)</li>
+<li>Episodes no longer fail with &quot;no JSON array in output&quot;: the per-turn JSON plan skeleton made</li>
+</ul>
+<p>the local model return no JSON in 6 of 9 live runs and broke the length correction</p>
+<ul>
+<li>Nostr: no episode event is sent without an uploaded audio blob (a signed event on public</li>
+</ul>
+<p>relays cannot be taken back); only a show&#x27;s own switch publishes, the global preset applies to</p>
+<p>new shows only and re-saving a show keeps its switch; only `show.&lt;n&gt;.nostr` keys are accepted</p>
+<ul>
+<li>AI disclosure is on by default as the settings page already showed: an unset</li>
+</ul>
+<p>`disclosure.ai_label` wrote no AI_GENERATED tag (EU AI Act Art. 50); &#x27;0&#x27; still turns it off</p>
+<ul>
+<li>Share pages, OG tags and clip links use VOZONDA_PUBLIC_URL or the request host instead of a</li>
+</ul>
+<p>hardcoded domain, so self-hosted installs link to themselves</p>
+<ul>
+<li>Scheduled digests no longer re-bundle entries already used in an earlier digest</li>
+<li>Security: /llm/probe requires write auth, callback_url guarded at registration, path traversal</li>
+</ul>
+<p>on /audio and peaks, SSRF guard on discovered links, no exception text in 401 responses</p>
+<ul>
+<li>Kokoro: installed check, language mapping, downloads written atomically</li>
+<li>cover.py lost in a multi-agent stash collision, recovered from stash</li>
+</ul>
+<p>history; test suite import cleanups (ruff clean)</p>
+<h4>Changed</h4>
+<ul>
+<li>POST /watchlist/{wid}/digest shares the scheduled digest code path</li>
+</ul>
+<h4>Removed</h4>
+<ul>
+<li>The per-turn TURN PLAN and the full-rewrite RHYTHM CORRECTION pass (replaced by the script</li>
+</ul>
+<p>contract, the role repair and the rhythm layer)</p>
+<ul>
+<li>Piper voice `lessac` (trained on a non-commercial corpus)</li>
+</ul>
+<h4>Security</h4>
+<ul>
+<li>urllib3 2.8.0; transformers stays at 4.57.3 until qwen-tts unpins it (see docs/audits/2026-10-security.md)</li>
+</ul>
+</div>
 <div class="older-release">
 <h4 class="mono">v0.5.0</h4>
 <h4>Added</h4>
