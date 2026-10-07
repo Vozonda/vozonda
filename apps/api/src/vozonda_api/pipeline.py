@@ -669,6 +669,8 @@ def _stored_line(ln: dict[str, Any], host_names: dict[str, str]) -> dict[str, An
     if custom:
         # display name rides along; speaker letter stays the voice-mapping id
         out["name"] = custom
+    if ln.get("src"):
+        out["src"] = list(ln["src"])
     return out
 
 
@@ -976,9 +978,9 @@ async def _script_digest(
         "{\"speaker\":\"A\",\"text\":\"...\",\"section\":0}. Never put more than one "
         "speaker in one text, and never write 'A:' or 'B:' inside a text.\n"
         "   \"section\" is the 0-based index of the story the turn belongs to.\n"
-        "   Each turn may carry \"src\" with the numbers of the sources above it draws on, "
+        "   Every content turn MUST carry \"src\" with the numbers of the sources above it draws on, "
         "for example {\"speaker\":\"A\",\"text\":\"...\",\"section\":0,\"src\":[1]}. "
-        "A transition between stories or a short interjection carries no \"src\".\n"
+        "Only a transition between stories or a short interjection carries no \"src\".\n"
         "2. Between sections, include ONE transition turn where a host names the next story.\n"
         "3. Every factual claim must stay within its section. Never mix facts across sections.\n"
         "4. Each section must open with the host introducing the source topic.\n"
@@ -1216,6 +1218,51 @@ async def _script_direct(
     raise RuntimeError("all script attempts failed")
 
 
+_SRC_MIN_WORDS = 8  # shorter turns are interjections or transitions
+
+
+async def _repair_src(
+    out: list[dict[str, Any]],
+    prov: dict[str, Any],
+    body: str,
+    n_sources: int,
+    length_meta: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Multi-source runs: ask once for the citations of content turns that carry
+    none (the local model skips the optional field). Only `src` is added, never
+    text; a failed call or an unusable answer leaves the script as it is."""
+    missing = [i for i, ln in enumerate(out) if not ln.get("src") and len(str(ln["text"]).split()) >= _SRC_MIN_WORDS]
+    if length_meta is not None:
+        length_meta["src_missing"] = len(missing)
+    if not missing:
+        return out
+    listing = "\n".join(f"{i}: {out[i]['text']}" for i in missing)
+    prompt = (
+        f"The sources are numbered [1]..[{n_sources}] in the material below. For each numbered script turn, "
+        "give the numbers of the sources it draws on. Answer ONLY with a JSON array like "
+        "[{\"i\":0,\"src\":[1]},{\"i\":3,\"src\":[1,2]}], one object per turn.\n\n"
+        f"TURNS:\n{listing}\n\nSOURCE MATERIAL:\n{body}"
+    )
+    fixed = 0
+    try:
+        raw = await _chat_completion(prov, prompt, max_tokens=4096)
+        m = re.search(r"\[.*\]", raw, re.DOTALL)
+        answers = json.loads(m.group(0)) if m else []
+        out = [dict(ln) for ln in out]
+        for a in answers if isinstance(answers, list) else []:
+            if not isinstance(a, dict) or not isinstance(a.get("i"), int) or a["i"] not in missing:
+                continue
+            src = _clean_src(a.get("src"), n_sources)
+            if src:
+                out[a["i"]]["src"] = src
+                fixed += 1
+    except Exception:
+        logger.warning("source citation repair failed", exc_info=True)
+    if length_meta is not None:
+        length_meta["src_repaired"] = fixed
+    return out
+
+
 async def _role_and_rhythm(
     out: list[dict[str, Any]],
     profile: Any,
@@ -1436,9 +1483,9 @@ async def _script(
         # numbered [1]..[n], and each JSON turn may carry them in "src".
         # Into the existing output-format sentence, not a block at the end.
         _src_hint = (
-            f"Each turn may carry \"src\" with the numbers [1]..[{n_sources}] of the sources above it draws on, "
+            f"Every content turn MUST carry \"src\" with the numbers [1]..[{n_sources}] of the sources above it draws on, "
             "for example {\"speaker\":\"A\",\"text\":\"...\",\"src\":[1,2]}. "
-            "Transitions and short interjections carry no \"src\".\n"
+            "Only transitions and short interjections carry no \"src\".\n"
         )
         _marker = "Output ONLY a JSON array"
         if _marker in prompt_text:
@@ -1588,6 +1635,8 @@ async def _script(
                     if action:
                         length_meta["correction"] = action
                         length_meta["correction_kept"] = correction_kept
+            if fmt != "narration" and n_sources is not None and n_sources > 1:
+                out = await _repair_src(out, prov, body, n_sources, length_meta)
             if profile is not None:
                 out = await _role_and_rhythm(out, profile, prov, lang_line, language, body, length_meta)
             return out, description

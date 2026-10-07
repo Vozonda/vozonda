@@ -48,6 +48,7 @@ from .pipeline import (
     LANGUAGES,
     NARRATION_PROMPT,
     TONES,
+    _clean_src,
     _cleanup_job_output_files,
     _kill_job_subprocesses,
     resume_after_review,
@@ -1172,6 +1173,8 @@ async def approve_script(job_id: str, body: ScriptReviewIn) -> dict:
     if body.lines is not None:
         names = {ln.get("speaker"): ln.get("name") for ln in job.get("script") or [] if ln.get("name")}
         clean: list[dict] = []
+        # citations only exist for a combined episode; edited values stay within 1..n
+        n_src = len(job.get("digest_sources") or []) if job.get("combine") else None
         for ln in body.lines[:2000]:
             speaker = str(ln.get("speaker", "")).strip()
             if speaker not in _REVIEW_SPEAKERS:
@@ -1182,6 +1185,9 @@ async def approve_script(job_id: str, body: ScriptReviewIn) -> dict:
             line = {"speaker": speaker, "text": text}
             if names.get(speaker):
                 line["name"] = names[speaker]
+            src = _clean_src(ln.get("src"), n_src)
+            if src:
+                line["src"] = src
             clean.append(line)
         if not clean:
             raise HTTPException(422, "the script is empty")
