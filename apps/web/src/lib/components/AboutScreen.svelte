@@ -15,7 +15,6 @@
     { id: 'story', label: 'Story' },
     { id: 'rooms', label: 'Rooms' },
     { id: 'clips', label: 'Social Clips' },
-    { id: 'bookmarks', label: 'Bookmarks' },
     { id: 'shows', label: 'Podcast Shows' },
     { id: 'identity', label: 'Nostr & Zaps' },
     { id: 'engines', label: 'Engines' },
@@ -92,7 +91,7 @@
 
       <p>Drop links, PDFs, images or your own notes, pick your dialogue style, and press make it talk. While you do literally anything else, local AI models extract the story, write the conversation, and voice it with a synchronized transcript. You get an instant MP3 ready for playback, sharing, or your morning commute.</p>
 
-      <p>Hand it your favorite RSS feeds or Nostr bookmarks, and Vozonda works automatically in the background: new articles become polished audio episodes on their own. Everything lands straight in your personal podcast feed, with Podcasting 2.0 chapters and Value4Value Lightning tips wired in.</p>
+      <p>Hand it your favorite RSS feeds, and Vozonda works automatically in the background: new articles become polished audio episodes on their own. Everything lands straight in your personal podcast feed, with Podcasting 2.0 chapters and Value4Value Lightning tips wired in.</p>
     </section>
 
     <section id="rooms" class="about-sec">
@@ -142,15 +141,6 @@
       </p>
     </section>
 
-    <section id="bookmarks" class="about-sec feature-box">
-      <h2>Nostr bookmarks to podcast pipeline</h2>
-      <p>Save long-reads in your favorite Nostr app (Primal, Damus, Coracle, Amethyst)
-      as bookmarks. Vozonda automatically detects your public reading queue and
-      converts saved articles into your morning audio podcast episodes.</p>
-      <p class="deep-link-row mono">
-        <a class="faq-link" href="#faq#nostr-bookmarks">→ NIP-51 bookmark ingestion guide in FAQ</a>
-      </p>
-    </section>
 
     <section id="shows" class="about-sec feature-box">
       <h2>Personal podcast shows and private RSS feeds</h2>
@@ -165,9 +155,8 @@
     <section id="identity" class="about-sec">
       <h2>Sovereign identity and Value4Value</h2>
       <p>Vozonda is Nostr-native. Log in with your NIP-07 browser extension (like Alby
-      or nos2x) or NIP-46 remote signer (Amber) to publish highlights (NIP-84),
-      sync your bookmarks into episodes (NIP-51), and zap creators (NIP-57) directly
-      over Lightning. No email, no password, no central database tracking you.</p>
+      or nos2x) or NIP-46 remote signer (Amber) to publish highlights (NIP-84)
+      and zap creators (NIP-57) directly over Lightning. No email, no password, no central database tracking you.</p>
       <p class="deep-link-row mono">
         <a class="faq-link" href="#faq#nostr-section">→ Nostr keys & zap setup in FAQ</a>
       </p>

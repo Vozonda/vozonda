@@ -21,7 +21,6 @@
     { id: 'templates-vs-styles', label: 'Templates' },
     { id: 'audio-clips', label: 'Audio Clips' },
     { id: 'watchlist-section', label: 'Watchlist' },
-    { id: 'nostr-bookmarks', label: 'Bookmarks' },
     { id: 'podcast-channels', label: 'Shows' },
     { id: 'voices-hosts', label: 'Voices' },
     { id: 'voice-engines', label: 'Engines' },
@@ -174,7 +173,6 @@
       <li><a href="#episode-vs-defaults" onclick={(e) => goToSection(e, 'episode-vs-defaults')}>This episode vs defaults</a></li>
       <li><a href="#audio-clips" onclick={(e) => goToSection(e, 'audio-clips')}>Audio clips & social slicing</a></li>
       <li><a href="#watchlist-section" onclick={(e) => goToSection(e, 'watchlist-section')}>Watchlist: auto-episodes from RSS</a></li>
-      <li><a href="#nostr-bookmarks" onclick={(e) => goToSection(e, 'nostr-bookmarks')}>Nostr bookmarks & auto-ingestion</a></li>
       <li><a href="#podcast-channels" onclick={(e) => goToSection(e, 'podcast-channels')}>Podcast shows & custom RSS feeds</a></li>
       <li><a href="#listen-screen" onclick={(e) => goToSection(e, 'listen-screen')}>Listen screen: what you see</a></li>
       <li><a href="#keyboard" onclick={(e) => goToSection(e, 'keyboard')}>Keyboard shortcuts</a></li>
@@ -282,14 +280,6 @@
     </dl>
   </section>
 
-  <section id="nostr-bookmarks">
-    <h2>Nostr bookmarks & auto-ingestion (NIP-51)</h2>
-    <dl class="mono facts">
-      <div><dt>for listeners (easy)</dt><dd>whenever you find an interesting article or blog post on Nostr (in Damus, Primal, Amethyst, Coracle), bookmark it. Vozonda automatically detects your bookmarks and converts them into fresh podcast episodes in your queue.</dd></div>
-      <div><dt>how it connects</dt><dd>connect your Nostr profile (via Alby, nos2x, or Amber). Vozonda reads your public bookmark list (NIP-51 kind 10003 and kind 30001) from your relays and feeds the web URLs into your Watchlist.</dd></div>
-      <div><dt>under the hood (pro)</dt><dd>automated background sync queries relays, deduplicates against existing episodes, resolves NIP-19 naddr/nevent entities via local njump resolver, and triggers sovereign pipeline synthesis.</dd></div>
-    </dl>
-  </section>
 
   <section id="podcast-channels">
     <h2>Podcast feeds, series & automation</h2>
@@ -433,7 +423,7 @@
       <div>
         <dt>in vozonda</dt>
         <dd>
-          Connect via NIP-07 browser signer (Alby/nos2x) or Amber. Vozonda syncs your bookmarked articles (NIP-51) straight into podcast episodes, signs transcript quotes (NIP-84 highlights), and splits sats directly to your npub.
+          Connect via NIP-07 browser signer (Alby/nos2x) or Amber. Vozonda signs transcript quotes (NIP-84 highlights), and splits sats directly to your npub.
         </dd>
       </div>
       <div>
