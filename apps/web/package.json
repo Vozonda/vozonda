@@ -11,7 +11,7 @@
     "budget": "node scripts/bundle_budget.cjs"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tsconfig/svelte": "^5.0.4",
     "svelte": "^5.57.1",
     "svelte-check": "^4.1.4",
