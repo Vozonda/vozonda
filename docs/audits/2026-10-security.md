@@ -566,6 +566,11 @@ repositories (see the TTS model list in `docs/audits/2026-10-licenses.md`); it n
 model, tokenizer or config chosen by a request. Re-check each advisory against that when it is
 updated.
 
+Re-tested 2026-10-08: a uv override to transformers 5.19.0 and accelerate 1.15.0 resolves, but `import qwen_tts`
+fails at once (`TypeError: check_model_inputs() missing 1 required positional argument: 'func'`), so Qwen3-TTS
+does not run on transformers 5 out of the box. Tracked publicly in issue #26, which also proposes making
+Qwen3-TTS opt-in in the Docker image so the default (Kokoro) image ships neither package.
+
 Exit condition: upgrade to transformers 5.x as soon as a `qwen-tts` release allows it, then
 render one smoke episode per local engine (qwen3-tts, chatterbox, dia, dia2, higgs, vibevoice)
 on the GPU before landing. urllib3 was bumped to 2.8.0 in the same pass (8f5cdcb).
