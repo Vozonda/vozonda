@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- fetching: the user agent carries a contact URL (`+https://vozonda.com`), as Wikimedia's robot policy asks; without it Wikipedia answered 403 to the Docker image, so the quickstart example failed on a clean machine
 - about and FAQ no longer describe turning Nostr bookmarks (NIP-51) into episodes: that is not built yet; it is on the roadmap as an idea
 - digest: hosts no longer call themselves "Host A", chapter and fallback titles drop site suffixes (" - NASA Science", " | Site"), and the episode title is written from the script like for single episodes (#7)
 - script: surprise reactions ("Wait, really?", "Huh.") no longer follow a summary, a turn without a reason, another surprise, or land in the last two turns; the rhythm layer swaps them for a neutral back-channel (#3)

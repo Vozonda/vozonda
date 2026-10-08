@@ -83,8 +83,15 @@ def test_user_agent_uses_vozonda():
     from vozonda_api.fetcher import FETCH_HEADERS
 
     ua = FETCH_HEADERS["User-Agent"]
-    assert ua == f"vozonda/{__version__} (self-hosted audio overviews)"
+    assert ua == f"vozonda/{__version__} (+https://vozonda.com; self-hosted audio overviews)"
     assert ("hear" + "say") not in ua.lower()
+
+
+def test_user_agent_has_contact_url():
+    """Wikimedia's robot policy wants a way to reach the operator; without it Wikipedia returns 403."""
+    from vozonda_api.fetcher import FETCH_HEADERS
+
+    assert "+https://vozonda.com" in FETCH_HEADERS["User-Agent"]
 
 
 def test_nostr_ai_tag_uses_vozonda():

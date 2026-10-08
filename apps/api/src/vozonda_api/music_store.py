@@ -135,7 +135,7 @@ async def import_music_from_url(url: str, kind: str = "intro") -> dict[str, Any]
         downloaded = bytearray()
         async with (
             guarded_client(timeout=httpx.Timeout(30.0, connect=10.0), follow_redirects=True) as client,
-            client.stream("GET", url, headers={"User-Agent": f"vozonda/{__version__} (music-download)"}) as resp,
+            client.stream("GET", url, headers={"User-Agent": f"vozonda/{__version__} (+https://vozonda.com; music-download)"}) as resp,
         ):
             if resp.status_code >= 400:
                 raise FetchError(f"HTTP error {resp.status_code} fetching audio from URL")
