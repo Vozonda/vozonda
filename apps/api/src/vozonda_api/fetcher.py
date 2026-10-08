@@ -23,6 +23,7 @@ from urllib.parse import urlparse
 import httpx
 
 from . import __version__
+from .env import env
 
 FETCH_HEADERS = {
     # A contact URL in the user agent, as Wikimedia's robot policy asks: without it Wikipedia answers 403 to the
@@ -37,6 +38,9 @@ FETCH_MAX_BYTES = 2_000_000
 # PDFs are binary and often larger (the Attention paper is ~2.2 MB); a PDF cut
 # at 2 MB is unreadable and failed as "scanned without text layer".
 PDF_MAX_BYTES = 25_000_000
+# Audio files have their own cap (300 MB default, overridable via VOZONDA_AUDIO_MAX_BYTES).
+# Reads one byte past the cap to distinguish "exactly at cap" from "larger".
+AUDIO_MAX_BYTES = int(env("AUDIO_MAX_BYTES", "300000000"))
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 TEXT_TYPES = (
     "text/html",
@@ -46,6 +50,12 @@ TEXT_TYPES = (
     "image/jpeg",
     "image/png",
     "image/webp",
+    "audio/mpeg",
+    "audio/mp4",
+    "audio/x-m4a",
+    "audio/wav",
+    "audio/ogg",
+    "audio/opus",
 )
 
 YOUTUBE_REGEX = re.compile(
@@ -132,6 +142,23 @@ def _read_bytes_bounded(resp: httpx.Response, limit: int = FETCH_MAX_BYTES) -> b
     return b"".join(chunks)[:limit]
 
 
+def _read_audio_bounded(resp: httpx.Response, limit: int = AUDIO_MAX_BYTES) -> bytes:
+    """Read audio with a hard cap: reads one byte past the limit to detect overflow.
+    
+    Raises FetchError if the content exceeds the limit (strictly greater than limit).
+    Returns the full content if it is exactly at or under the limit.
+    """
+    chunks: list[bytes] = []
+    total = 0
+    for chunk in resp.iter_bytes():
+        chunks.append(chunk)
+        total += len(chunk)
+        if total > limit:
+            mb = limit // 1_000_000
+            raise FetchError(f"audio is larger than {mb} MB; provide a smaller file or a transcript")
+    return b"".join(chunks)
+
+
 def _read_bounded(resp: httpx.Response) -> str:
     raw = _read_bytes_bounded(resp)
     return raw.decode(resp.encoding or "utf-8", errors="replace")
@@ -161,6 +188,8 @@ def _extract_pdf_text(pdf_bytes: bytes) -> str:
 
 
 _IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+# Audio file extensions used to detect audio type from the URL path.
+_AUDIO_EXTS = (".mp3", ".m4a", ".wav", ".ogg", ".opus")
 IMAGE_MAX_SIDE = 2048
 
 # a screenshot or scanned page is transcribed; a photo, painting or chart without much
@@ -384,9 +413,13 @@ async def fetch_document(url: str) -> tuple[str, str]:
                 untyped = not ctype
                 is_pdf_hint = ctype == "application/pdf" or (untyped and path.endswith(".pdf"))
                 is_image_hint = ctype.startswith("image/") or (untyped and path.endswith(_IMAGE_EXTS))
-                # images get the large cap too: a photo cut at 2 MB is a broken file
+                is_audio_hint = ctype.startswith("audio/") or (untyped and path.endswith(_AUDIO_EXTS))
+                # images and PDFs get the large cap; audio has its own cap (AUDIO_MAX_BYTES)
                 big = is_pdf_hint or is_image_hint
-                raw_bytes = _read_bytes_bounded(resp, PDF_MAX_BYTES if big else FETCH_MAX_BYTES)
+                if is_audio_hint:
+                    raw_bytes = await asyncio.to_thread(_read_audio_bounded, resp)
+                else:
+                    raw_bytes = _read_bytes_bounded(resp, PDF_MAX_BYTES if big else FETCH_MAX_BYTES)
                 if is_pdf_hint or (untyped and raw_bytes.startswith(b"%PDF")):
                     loop = asyncio.get_event_loop()
                     return "pdf", await loop.run_in_executor(None, _extract_pdf_text, raw_bytes)
@@ -394,6 +427,8 @@ async def fetch_document(url: str) -> tuple[str, str]:
                     if len(raw_bytes) >= PDF_MAX_BYTES:
                         raise FetchError(f"image is larger than {PDF_MAX_BYTES // 1_000_000} MB; use a smaller version of it")
                     return "image", await _extract_image_text(raw_bytes, ctype or "image/jpeg")
+                if is_audio_hint:
+                    return "audio", raw_bytes
 
                 return "article", raw_bytes.decode(resp.encoding or "utf-8", errors="replace")
             except (httpx.TimeoutException, httpx.TransportError, httpx.HTTPStatusError) as e:
