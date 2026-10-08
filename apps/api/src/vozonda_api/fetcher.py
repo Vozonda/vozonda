@@ -25,7 +25,9 @@ import httpx
 from . import __version__
 
 FETCH_HEADERS = {
-    "User-Agent": f"vozonda/{__version__} (self-hosted audio overviews)",
+    # A contact URL in the user agent, as Wikimedia's robot policy asks: without it Wikipedia answers 403 to the
+    # Docker image (Python 3.12-slim TLS stack), so the quickstart example failed on a clean machine.
+    "User-Agent": f"vozonda/{__version__} (+https://vozonda.com; self-hosted audio overviews)",
     "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5",
     "Accept-Language": "en,de;q=0.8",
 }
