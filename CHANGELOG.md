@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- web: vite 8 and @sveltejs/vite-plugin-svelte 7, upgraded together (their peer ranges only match as a pair; replaces Dependabot #15 and #16)
 - the in-app dev page is replaced by the public changelog at vozonda.com/changelog/
 
 ### Fixed
