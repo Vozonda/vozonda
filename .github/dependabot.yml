@@ -17,6 +17,14 @@ updates:
     groups:
       web-minor:
         update-types: [minor, patch]
+      # vite and its Svelte plugin only resolve as a pair (peer ranges), so their majors come in one PR
+      vite-major:
+        patterns: ["vite", "@sveltejs/vite-plugin-svelte"]
+        update-types: [major]
+    ignore:
+      # svelte-check does not accept TypeScript 7 yet (peer range); lift this once it does
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
