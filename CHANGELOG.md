@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- show tiles no longer overflow on medium-width windows (container query replaces viewport media query for 2-column layout)
 - tests: the shared test database path is unique per xdist worker; two workers could share one /dev/shm file and fail at random
 - security: web dependency `source-map-js` 1.2.1 -> 1.2.2 (event-loop denial of service advisory); transformers/accelerate advisories stay blocked by the qwen-tts pin, tracked in #26
 - fetching: the user agent carries a contact URL (`+https://vozonda.com`), as Wikimedia's robot policy asks; without it Wikipedia answered 403 to the Docker image, so the quickstart example failed on a clean machine

@@ -163,6 +163,8 @@
     min-width: 0;
     margin-top: var(--space-5);
     background: color-mix(in srgb, var(--paper) 4%, transparent);
+    container-type: inline-size;
+    container-name: show;
   }
 
   .ess-h {
@@ -204,6 +206,7 @@
     min-height: 54px;
     font-family: var(--font-mono);
     transition: border-color var(--dur-fast) ease-out, background var(--dur-fast) ease-out;
+    min-width: 0;
   }
 
   .format-card:hover {
@@ -239,12 +242,14 @@
     color: var(--ink);
     font-size: var(--ui-size);
     font-weight: 600;
+    overflow-wrap: anywhere;
   }
 
   .fc-desc {
     color: var(--ink-soft);
     font-size: calc(var(--ui-size) * 0.85);
     line-height: 1.4;
+    overflow-wrap: anywhere;
   }
 
   .link {
@@ -356,14 +361,16 @@
     font-size: calc(var(--ui-size) * 0.9);
   }
 
-  @media (max-width: 620px) {
-    .ess {
-      padding: var(--space-4);
-    }
-
+  @container show (max-width: 680px) {
     .format-cards {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: var(--space-2);
+    }
+  }
+
+  @media (max-width: 620px) {
+    .ess {
+      padding: var(--space-4);
     }
 
     .actions {
