@@ -1827,6 +1827,7 @@
                     {/each}
                   </div>
                 </div>
+                <p class="help reach-note">no nostr here: the default show has no nostr key of its own. name a show in the composer to publish it as nostr only or both.</p>
               </div>
               <p class="help">{MASTER_REACHES.find((r) => r.id === reach)?.help}</p>
               <p class="help">name and author also go into every mp3, the player and the share page; category and description are for podcast apps.</p>
@@ -3540,6 +3541,11 @@
     align-items: center;
     gap: var(--space-2) var(--space-3);
   }
+  /* the note sits under the distribution buttons, in the field column */
+  .show-fields .reach-note {
+    grid-column: 2;
+    margin: 0;
+  }
   .show-fields .desc-ta {
     resize: vertical;
     line-height: 1.5;
@@ -3547,6 +3553,9 @@
   @media (max-width: 520px) {
     .show-fields {
       grid-template-columns: minmax(0, 1fr);
+    }
+    .show-fields .reach-note {
+      grid-column: 1;
     }
   }
 </style>
