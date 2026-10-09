@@ -574,3 +574,11 @@ Qwen3-TTS opt-in in the Docker image so the default (Kokoro) image ships neither
 Exit condition: upgrade to transformers 5.x as soon as a `qwen-tts` release allows it, then
 render one smoke episode per local engine (qwen3-tts, chatterbox, dia, dia2, higgs, vibevoice)
 on the GPU before landing. urllib3 was bumped to 2.8.0 in the same pass (8f5cdcb).
+
+## Addendum: Qwen3-TTS opt-in and dependency surface (2026-10-09, v0.7.0)
+
+The default Docker image no longer installs `transformers` or `accelerate`. They are pulled in
+only when the Qwen3-TTS opt-in is active: set `VOZONDA_WITH_QWEN_TTS=1` in `.env` and rebuild
+with `docker compose up -d --build`. This means the advisories documented above in the
+transformers section (PYSEC-2025-217, PYSEC-2026-2288/2289/2290/3929, CVE-2026-80047) affect only
+that opt-in path. The default image (Kokoro TTS on CPU) is unaffected.
