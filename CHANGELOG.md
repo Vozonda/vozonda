@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Docker build arg `WITH_QWEN_TTS` (set `VOZONDA_WITH_QWEN_TTS=1` to opt-in): pulls `torch`, `torchaudio` and `qwen-tts` into the image, tracked in #26
+
 ### Changed
 
 - web: vite 8 and @sveltejs/vite-plugin-svelte 7, upgraded together (their peer ranges only match as a pair; replaces Dependabot #15 and #16)

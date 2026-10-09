@@ -158,7 +158,12 @@ If you have an NVIDIA GPU and wish to use the heavier Qwen3-TTS engine instead
 of CPU Kokoro:
 
 1. Install the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
-2. Create a `docker-compose.override.yml` file in the repository root:
+2. Set `VOZONDA_WITH_QWEN_TTS=1` in your `.env` file to include the Qwen3-TTS
+   engine (torch, ~2GB) in the Docker image. You must rebuild the image:
+   ```bash
+   docker compose up -d --build
+   ```
+3. Create a `docker-compose.override.yml` file in the repository root:
    ```yaml
    services:
      api:
@@ -173,9 +178,9 @@ of CPU Kokoro:
                  count: all
                  capabilities: [gpu]
    ```
-3. Restart Docker Compose:
+4. Restart Docker Compose:
    ```bash
    docker compose up -d
    ```
-4. On the first render with Qwen3-TTS, model weights (~4GB) will download
+5. On the first render with Qwen3-TTS, model weights (~4GB) will download
    automatically to the persistent `vozonda-hf-cache` Docker volume.
