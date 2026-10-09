@@ -7,11 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-09
+
 ### Fixed
 
 - audio uploads are recognised (MP3 with ID3 tags, M4A, WAV, Ogg/Opus, FLAC) and may be up to the audio cap; the source input lists audio and its file picker accepts audio files
 - audio: transcription failed on every install since PyAV 19 (faster-whisper 1.2.1 still passes `metadata_errors` to `av.open`); `av` is held below 19 in the `stt` extra and the Docker image
 - audio: the default cap for audio files is 100 MB (was 300 MB; about one hour of MP3, matching the one-hour limit), the Whisper timeout grows with the audio length instead of a fixed 300 s, Whisper skips silence (VAD), punctuation chunks run four at a time and keep a chunk raw if a single word changes
+
+### Changed
+
+- settings: the default show says why it offers no Nostr options (it has no Nostr key of its own; name a show to publish on Nostr)
 
 ## [0.7.0] - 2026-10-09
 
