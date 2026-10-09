@@ -18,7 +18,7 @@ SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SELF_DIR/.." && pwd)"
 TARGET="${1:?Usage: scripts/export_public.sh <target-dir>}"
 TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
+trap 'rm -rf "$TMP" 2>/dev/null || true' EXIT
 
 # ── 1. git archive HEAD → temp dir ─────────────────────────────────
 git -C "$REPO_ROOT" archive HEAD | tar -x -C "$TMP"
@@ -30,8 +30,10 @@ rm -rf "$TMP/docs/archive" "$TMP/.fleet-generated" "$TMP/opencode.json"
 git -C "$TMP" init -q
 git -C "$TMP" config user.email "public@vozonda.dev"
 git -C "$TMP" config user.name "Vozonda"
+git -C "$TMP" config gc.auto 0
+git -C "$TMP" config maintenance.auto false
 git -C "$TMP" add -A
-git -C "$TMP" commit -q --allow-empty -m "public export"
+git -C "$TMP" -c gc.auto=0 commit -q --allow-empty -m "public export"
 
 # ── 4. public scan ──────────────────────────────────────────────────
 if python3 "$SELF_DIR/public_scan.py" --repo "$TMP" \
