@@ -83,7 +83,9 @@ def jobs_db(tmp_path, monkeypatch):
     try:
         shm_base = Path("/dev/shm") / "vozonda-test-dbs"
         shm_base.mkdir(parents=True, exist_ok=True)
-        db_path = shm_base / f"{tmp_path.name}-jobs.db"
+        # tmp_path.name repeats across xdist workers (test_x_0 in each), so two workers could share one
+        # /dev/shm file and race; the pid keeps every worker's database its own.
+        db_path = shm_base / f"{os.getpid()}-{tmp_path.name}-jobs.db"
         if db_path.exists():
             db_path.unlink()
     except OSError:
