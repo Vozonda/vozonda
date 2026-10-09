@@ -33,7 +33,8 @@ RUN pip install --no-cache-dir \
     soundfile \
     numpy \
     kokoro-onnx \
-    piper-tts
+    piper-tts \
+    faster-whisper
 
 RUN if [ "$WITH_QWEN_TTS" = "1" ]; then \
     pip install --no-cache-dir torch torchaudio qwen-tts; \

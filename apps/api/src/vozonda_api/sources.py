@@ -1,10 +1,11 @@
 """Source objects for the source tray (VOZONDA-MULTI-SOURCE-TRAY, docs/plan-multisource-tray.md).
 
 A source is read once, when it is added: the article fetched, the PDF turned into text,
-the image read by the local vision model, the video's subtitles pulled. The tray card
-then shows the real title, size and language, or a clear error with a next step, before
-anyone presses start. A job references source ids and copies their text into
-`job_sources`, so a variant can rebuild the tray from exactly the text the episode used.
+the image read by the local vision model, the video's subtitles pulled, the audio
+transcribed. The tray card then shows the real title, size and language, or a clear
+error with a next step, before anyone presses start. A job references source ids and
+copies their text into `job_sources`, so a variant can rebuild the tray from exactly
+the text the episode used.
 
 Privacy: an uploaded file is never written to disk by this module; only its extracted
 text is kept (the PDF temp file of pdftotext is removed by the fetcher). Re-encoding an
@@ -16,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+import os
 import re
 import time
 import uuid
@@ -36,7 +38,10 @@ MAX_TEXT_CHARS = 2_000_000
 # the backend digest limit; VOZONDA-MULTI-SOURCE-TRAY moves it into the settings
 MAX_SOURCES = 10
 IMAGE_MAX_SIDE = 2048
-URL_KINDS = ("article", "pdf", "image", "youtube")
+URL_KINDS = ("article", "pdf", "image", "youtube", "audio")
+# Audio file extensions accepted for uploads and URLs.
+AUDIO_EXTS = (".mp3", ".m4a", ".wav", ".ogg", ".opus")
+
 ROLES = ("main", "context")
 
 SCHEMA = """
@@ -79,7 +84,7 @@ ERRORS: dict[str, tuple[str, bool]] = {
     "too_large": (f"the file is larger than {UPLOAD_MAX_BYTES // 1_000_000} MB. Upload a smaller file or paste its text.", False),
     "no_subtitles": ("this video has no subtitles, so there is nothing to read. Paste a transcript as a note.", False),
     "image_unreadable": ("no readable text found in this image, or the vision model is not running.", True),
-    "unsupported_type": ("this file type is not supported. Use PDF, JPG, PNG, WebP, TXT or MD.", False),
+    "unsupported_type": ("this file type is not supported. Use PDF, JPG, PNG, WebP, TXT, MP3, M4A, WAV, OGG or OPUS.", False),
     "too_short": (f"too little readable text (at least {MIN_TEXT_CHARS} characters).", False),
     "too_long": (f"the text is longer than {MAX_TEXT_CHARS:,} characters.", False),
     "unreadable": ("could not read this source.", True),
@@ -250,9 +255,35 @@ def _check_text(text: str) -> str:
 
 async def read_url(url: str) -> tuple[str, str, str]:
     """(kind, title, text) for a link. The kind is what the server actually sent."""
+    from urllib.parse import urlparse
+
+    from .audio_source import extract_existing_transcript, transcribe_audio
     from .pipeline import _extract
 
+    path = urlparse(url).path.lower()
+    ext = os.path.splitext(path)[1] if "." in path else ""
+
+    # If the URL looks like an audio file by extension, fetch and transcribe.
+    if ext in AUDIO_EXTS:
+        kind, content = await fetch_document(url)
+        title, text, _, _ = await transcribe_audio(file_bytes=content)
+        existing = extract_existing_transcript(text)
+        if existing:
+            text = existing
+        text = _check_text(text)
+        return "audio", title, text
+
     kind, content = await fetch_document(url)
+
+    # fetch_document returns "audio" when the content-type is audio/.
+    if kind == "audio":
+        title, text, _, _ = await transcribe_audio(file_bytes=content)
+        existing = extract_existing_transcript(text)
+        if existing:
+            text = existing
+        text = _check_text(text)
+        return "audio", title, text
+
     if kind == "article":
         title, body, _og = await _extract(url, html=content, max_chars=None)
         return kind, title or url, _check_text(body)
@@ -297,9 +328,19 @@ def _normalize_image(data: bytes) -> tuple[bytes, str]:
 
 async def read_upload(data: bytes) -> tuple[str, str, str]:
     """(kind, title, text) for an uploaded file. The bytes stay in memory only."""
+    from .audio_source import detect_audio, extract_existing_transcript, transcribe_audio
+
     if len(data) > UPLOAD_MAX_BYTES:
         raise SourceError("too_large")
     ftype = sniff(data)
+    # Check if it is an audio file (by magic bytes or sniff).
+    if ftype is None and detect_audio(data):
+        title, text, _, _ = await transcribe_audio(file_bytes=data)
+        existing = extract_existing_transcript(text)
+        if existing:
+            text = existing
+        text = _check_text(text)
+        return "audio", title, text
     if ftype is None:
         raise SourceError("unsupported_type")
     if ftype == "pdf":
@@ -352,9 +393,11 @@ def add_note(text: str) -> dict[str, Any]:
 
 
 def add_upload(data: bytes) -> dict[str, Any]:
+    from .audio_source import detect_audio
+
     if len(data) > UPLOAD_MAX_BYTES:
         raise SourceError("too_large")
-    if sniff(data) is None:
+    if sniff(data) is None and not detect_audio(data):
         raise SourceError("unsupported_type")
     sid = _insert("file", None)
     _start(sid, read_upload(data))

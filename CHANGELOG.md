@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- audio sources: upload or link MP3, M4A, WAV, OGG and OPUS files; the audio is transcribed with faster-whisper, punctuation is restored by the local LLM with word-for-word validation, and pre-existing `<podcast:transcript>` tags are extracted without re-transcribing.
+- audio sources: audio downloads have a dedicated size cap (300 MB default, `VOZONDA_AUDIO_MAX_BYTES`); exceeding it raises an error instead of truncating; punctuation restoration processes text in ~300-word chunks with per-chunk validation and `enable_thinking=false`; Whisper model is configurable via `VOZONDA_WHISPER_MODEL` (default `base`).
 - Docker build arg `WITH_QWEN_TTS` (set `VOZONDA_WITH_QWEN_TTS=1` to opt-in): pulls `torch`, `torchaudio` and `qwen-tts` into the image, tracked in #26
 
 ### Changed
@@ -18,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- tests: the shared test database path is unique per xdist worker; two workers could share one /dev/shm file and fail at random
 - security: web dependency `source-map-js` 1.2.1 -> 1.2.2 (event-loop denial of service advisory); transformers/accelerate advisories stay blocked by the qwen-tts pin, tracked in #26
 - fetching: the user agent carries a contact URL (`+https://vozonda.com`), as Wikimedia's robot policy asks; without it Wikipedia answered 403 to the Docker image, so the quickstart example failed on a clean machine
 - about and FAQ no longer describe turning Nostr bookmarks (NIP-51) into episodes: that is not built yet; it is on the roadmap as an idea
