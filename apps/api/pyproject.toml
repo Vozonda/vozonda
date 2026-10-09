@@ -1,6 +1,6 @@
 [project]
 name = "vozonda-api"
-version = "0.7.0"
+version = "0.7.1"
 description = "Vozonda orchestrator: url to two-voice podcast dialogue"
 requires-python = ">=3.11"
 dependencies = [
