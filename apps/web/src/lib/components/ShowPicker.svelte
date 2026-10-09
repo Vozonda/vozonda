@@ -154,7 +154,7 @@
 </section>
 
 <style>
-.ess {
+  .ess {
     border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: var(--space-5);
@@ -192,7 +192,7 @@
     gap: var(--space-3);
   }
 
-.format-card {
+  .format-card {
     display: grid;
     justify-items: start;
     align-content: start;
@@ -238,14 +238,14 @@
     color: var(--green);
   }
 
-.fc-label {
+  .fc-label {
     color: var(--ink);
     font-size: var(--ui-size);
     font-weight: 600;
     overflow-wrap: anywhere;
   }
 
-.fc-desc {
+  .fc-desc {
     color: var(--ink-soft);
     font-size: calc(var(--ui-size) * 0.85);
     line-height: 1.4;
