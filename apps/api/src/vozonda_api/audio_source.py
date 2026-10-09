@@ -37,21 +37,57 @@ WHISPER_MODEL = env("WHISPER_MODEL", "base")
 
 # Punctuation chunk size (approximate words per chunk).
 PUNCTUATION_CHUNK_WORDS = 300
+# local servers (vLLM, Ollama) batch parallel requests; 4 keeps a small machine responsive
+PUNCTUATION_CONCURRENCY = int(env("PUNCTUATION_CONCURRENCY", "4"))
+
+
+def _words(text: str) -> list[str]:
+    return re.findall(r"[a-zA-Z0-9\u00c0-\u024f]+", text.lower())
+
+
+# ISO base media brands for M4A/AAC files.
+_ISO_AUDIO_BRANDS = (b"M4A ", b"M4B ", b"mp42", b"isom", b"dash")
 
 
 def detect_audio(data: bytes, ctype: str = "", ext: str = "") -> bool:
-    """Return True if the content looks like an audio file."""
+    """Return True if the content looks like an audio file.
+
+    Recognised formats and their magic bytes::
+
+        MP3:  ID3v2 tag (b'ID3') or an MPEG audio frame sync (11 set bits)
+        WAV:  RIFF header with b'WAVE' at offset 8
+        Ogg:  page signature b'OggS' (Vorbis, Opus)
+        M4A:  ISO base media 'ftyp' box at offset 4, brand M4A , M4B , mp42, isom or dash at offset 8
+        FLAC: b'fLaC'
+
+    The ctype and ext arguments keep working as before: a content-type
+    starting with ``audio/`` or a matching extension returns True without
+    inspecting the bytes.
+    """
     if ctype and any(ctype.startswith(p) for p in ("audio/",)):
         return True
     if ext and ext.lower() in AUDIO_EXTS:
         return True
-    if data[:2] == b"\xff\xe0":  # MPEG frame sync
+    if not data:
+        return False
+    # ID3v2 tag (MP3 with metadata)
+    if data[:3] == b"ID3":
         return True
+    # MPEG audio frame sync (bare MP3 stream)
+    if len(data) >= 2 and data[0] == 0xFF and (data[1] & 0xE0) == 0xE0:
+        return True
+    # WAV
     if data[:4] == b"RIFF" and len(data) > 8 and data[8:12] == b"WAVE":
         return True
+    # Ogg (Vorbis, Opus)
     if data[:4] == b"OggS":
         return True
-    return data[:4] == b"fLaR"
+    # ISO base media file (M4A / AAC)
+    # the first 4 bytes are the box size, the box type follows at offset 4
+    if len(data) >= 12 and data[4:8] == b"ftyp" and data[8:12] in _ISO_AUDIO_BRANDS:
+        return True
+    # FLAC
+    return data[:4] == b"fLaC"
 
 
 async def transcribe_audio(
@@ -93,7 +129,7 @@ async def transcribe_audio(
                 "Split the file or provide a transcript.",
             )
 
-        result = await asyncio.to_thread(_run_whisper_sync, actual_path)
+        result = await asyncio.to_thread(_run_whisper_sync, actual_path, whisper_timeout(duration))
         text = result.get("text", "").strip()
         if not text:
             raise SourceError("too_short", "the audio has no detectable speech")
@@ -138,7 +174,17 @@ def _get_audio_duration(file_path: str) -> float:
     return 0.0
 
 
-def _run_whisper_sync(file_path: str) -> dict[str, Any]:
+def whisper_timeout(duration_s: float) -> float:
+    """Seconds the Whisper subprocess may take: model load plus the audio at real time.
+
+    A fixed 300 s cut off long files on an ordinary CPU (an hour of audio with the base
+    model can take longer than five minutes). Unknown length gets the full one-hour budget.
+    """
+    length = duration_s if duration_s > 0 else MAX_AUDIO_DURATION_S
+    return max(300.0, 120.0 + length)
+
+
+def _run_whisper_sync(file_path: str, timeout: float = 300.0) -> dict[str, Any]:
     """Run the Whisper transcription (synchronous).
 
     Called via asyncio.to_thread from the async context.
@@ -159,7 +205,7 @@ def _run_whisper_sync(file_path: str) -> dict[str, Any]:
             ],
             capture_output=True,
             text=True,
-            timeout=300.0,
+            timeout=timeout,
             check=False,
         )
         if res.returncode != 0:
@@ -168,6 +214,8 @@ def _run_whisper_sync(file_path: str) -> dict[str, Any]:
         return json.loads(res.stdout)
     except FileNotFoundError:
         raise SourceError("unreadable", "whisper is not available")
+    except subprocess.TimeoutExpired:
+        raise SourceError("unreadable", f"transcription took longer than {int(timeout)} s")
 
 
 # Template for the inline Whisper script that runs in the renderer's venv.
@@ -179,7 +227,8 @@ import json, sys, os
 try:
     from faster_whisper import WhisperModel
     model = WhisperModel(sys.argv[2], device="cpu", compute_type="int8")
-    segments, info = model.transcribe(sys.argv[1], language=None)
+    # vad_filter skips silence: faster, and no invented text in quiet passages
+    segments, info = model.transcribe(sys.argv[1], language=None, vad_filter=True)
     text = " ".join(s.text.strip() for s in segments).strip()
     lang = info.language or "en"
     print(json.dumps({"text": text, "language": lang}))
@@ -221,44 +270,28 @@ async def restore_punctuation(text: str) -> tuple[str, bool]:
         chunk_words = words[i : i + PUNCTUATION_CHUNK_WORDS]
         chunks.append(" ".join(chunk_words))
 
-    # Process each chunk
-    restored_chunks: list[str] = []
-    all_validated = True
+    # Chunks run in parallel (PUNCTUATION_CONCURRENCY at a time); gather keeps their order.
+    sem = asyncio.Semaphore(PUNCTUATION_CONCURRENCY)
 
-    for chunk in chunks:
-        original_words = re.findall(r"[a-zA-Z0-9\u00c0-\u024f]+", chunk.lower())
+    async def one(chunk: str) -> tuple[str, bool]:
+        original_words = _words(chunk)
         if not original_words:
-            restored_chunks.append(chunk)
-            continue
-
+            return chunk, True
         try:
-            punctuated = await _llm_punctuate_async(chunk)
-            if not punctuated or not punctuated.strip():
-                restored_chunks.append(chunk)
-                all_validated = False
-                continue
-
-            punct_words = re.findall(r"[a-zA-Z0-9\u00c0-\u024f]+", punctuated.lower())
-
-            if punct_words and original_words:
-                missing = set(original_words) - set(punct_words)
-                extra = set(punct_words) - set(original_words)
-                ratio = max(len(missing), len(extra)) / max(len(original_words), 1)
-                if ratio > 0.05:
-                    logger.debug(
-                        "punctuation restore word mismatch: %d missing, %d extra, ratio=%.2f, keeping raw chunk",
-                        len(missing), len(extra), ratio,
-                    )
-                    restored_chunks.append(chunk)
-                    all_validated = False
-                    continue
-
-            restored_chunks.append(punctuated)
-
+            async with sem:
+                punctuated = await _llm_punctuate_async(chunk)
         except Exception as exc:
             logger.warning("punctuation restore failed for chunk: %s", exc, exc_info=True)
-            restored_chunks.append(chunk)
-            all_validated = False
+            return chunk, False
+        # word for word: punctuation and capitals may change, the words and their order may not
+        if not punctuated or _words(punctuated) != original_words:
+            logger.debug("punctuation restore changed the words, keeping the raw chunk")
+            return chunk, False
+        return punctuated.strip(), True
+
+    results = await asyncio.gather(*(one(c) for c in chunks))
+    restored_chunks = [text for text, _ in results]
+    all_validated = all(ok for _, ok in results)
 
     return " ".join(restored_chunks), all_validated
 

@@ -38,9 +38,10 @@ FETCH_MAX_BYTES = 2_000_000
 # PDFs are binary and often larger (the Attention paper is ~2.2 MB); a PDF cut
 # at 2 MB is unreadable and failed as "scanned without text layer".
 PDF_MAX_BYTES = 25_000_000
-# Audio files have their own cap (300 MB default, overridable via VOZONDA_AUDIO_MAX_BYTES).
+# Audio files have their own cap (100 MB default, overridable via VOZONDA_AUDIO_MAX_BYTES): about one hour of
+# MP3 at up to 192 kbit/s, matching the one-hour duration limit in audio_source.py.
 # Reads one byte past the cap to distinguish "exactly at cap" from "larger".
-AUDIO_MAX_BYTES = int(env("AUDIO_MAX_BYTES", "300000000"))
+AUDIO_MAX_BYTES = int(env("AUDIO_MAX_BYTES", "100000000"))
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 TEXT_TYPES = (
     "text/html",

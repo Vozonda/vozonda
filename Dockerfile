@@ -34,7 +34,8 @@ RUN pip install --no-cache-dir \
     numpy \
     kokoro-onnx \
     piper-tts \
-    faster-whisper
+    faster-whisper \
+    "av<19"
 
 RUN if [ "$WITH_QWEN_TTS" = "1" ]; then \
     pip install --no-cache-dir torch torchaudio qwen-tts; \

@@ -24,13 +24,35 @@ import uuid
 from typing import Any
 
 from . import jobs as jobs_mod
-from .fetcher import PDF_MAX_BYTES, FetchError, _extract_image_text, _extract_pdf_text, fetch_document, guard_url
+from .audio_source import detect_audio
+from .fetcher import (
+    AUDIO_MAX_BYTES,
+    PDF_MAX_BYTES,
+    FetchError,
+    _extract_image_text,
+    _extract_pdf_text,
+    fetch_document,
+    guard_url,
+)
 
 logger = logging.getLogger(__name__)
 
 SOURCE_TTL_S = 24 * 3600
 UPLOAD_MAX_BYTES = PDF_MAX_BYTES
 READ_TIMEOUT_S = 180.0
+
+
+def upload_limit(data: bytes) -> int:
+    """Return the upload size limit for the given bytes.
+
+    Audio uploads may be up to AUDIO_MAX_BYTES; every other file keeps
+    UPLOAD_MAX_BYTES (25 MB).
+    """
+    if detect_audio(data):
+        return max(UPLOAD_MAX_BYTES, AUDIO_MAX_BYTES)
+    return UPLOAD_MAX_BYTES
+
+
 MIN_TEXT_CHARS = 20
 # a pasted note or text file larger than this is almost certainly a mistake (a whole
 # book is ~1 MB); keeps a single request from filling the database
@@ -81,7 +103,7 @@ ERRORS: dict[str, tuple[str, bool]] = {
     "blocked_address": ("local and private addresses are not allowed.", False),
     "bad_url": ("this is not a valid http(s) link.", False),
     "pdf_no_text": ("this PDF has no text layer (a scan). Upload the pages as images instead.", False),
-    "too_large": (f"the file is larger than {UPLOAD_MAX_BYTES // 1_000_000} MB. Upload a smaller file or paste its text.", False),
+    "too_large": ("the file is too large for upload. Upload a smaller file or paste its text.", False),
     "no_subtitles": ("this video has no subtitles, so there is nothing to read. Paste a transcript as a note.", False),
     "image_unreadable": ("no readable text found in this image, or the vision model is not running.", True),
     "unsupported_type": ("this file type is not supported. Use PDF, JPG, PNG, WebP, TXT, MP3, M4A, WAV, OGG or OPUS.", False),
@@ -327,11 +349,19 @@ def _normalize_image(data: bytes) -> tuple[bytes, str]:
 
 
 async def read_upload(data: bytes) -> tuple[str, str, str]:
-    """(kind, title, text) for an uploaded file. The bytes stay in memory only."""
-    from .audio_source import detect_audio, extract_existing_transcript, transcribe_audio
+    """(kind, title, text) for an uploaded file. The bytes stay in memory only.
 
-    if len(data) > UPLOAD_MAX_BYTES:
-        raise SourceError("too_large")
+    Accepted file types: PDF, PNG, JPEG, WebP, plain text (UTF-8), and audio
+    in MP3 (with ID3 tags or bare MPEG frames), M4A, WAV, OGG (Vorbis/Opus),
+    and FLAC formats.
+    """
+    from .audio_source import extract_existing_transcript, transcribe_audio
+
+    if len(data) > upload_limit(data):
+        limit = upload_limit(data)
+        kind_label = "audio" if detect_audio(data) else "file"
+        mb = limit // 1_000_000
+        raise SourceError("too_large", f"{kind_label} upload is limited to {mb} MB")
     ftype = sniff(data)
     # Check if it is an audio file (by magic bytes or sniff).
     if ftype is None and detect_audio(data):
@@ -393,10 +423,11 @@ def add_note(text: str) -> dict[str, Any]:
 
 
 def add_upload(data: bytes) -> dict[str, Any]:
-    from .audio_source import detect_audio
-
-    if len(data) > UPLOAD_MAX_BYTES:
-        raise SourceError("too_large")
+    if len(data) > upload_limit(data):
+        limit = upload_limit(data)
+        kind_label = "audio" if detect_audio(data) else "file"
+        mb = limit // 1_000_000
+        raise SourceError("too_large", f"{kind_label} upload is limited to {mb} MB")
     if sniff(data) is None and not detect_audio(data):
         raise SourceError("unsupported_type")
     sid = _insert("file", None)

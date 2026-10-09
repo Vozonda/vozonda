@@ -85,7 +85,7 @@ class TestDetectAudio:
         assert detect_audio(b"OggS\x00\x00\x00\x00") is True
 
     def test_detects_flac_magic(self):
-        assert detect_audio(b"fLaR\x00\x00\x00\x00") is True
+        assert detect_audio(b"fLaC\x00\x00\x00\x00") is True
 
     def test_detects_by_content_type(self):
         assert detect_audio(b"fake", ctype="audio/mpeg") is True

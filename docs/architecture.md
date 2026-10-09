@@ -36,7 +36,7 @@ claims crash-resume.
 
 Audio sources (mp3, m4a, wav, ogg, opus) enter via the source tray as uploaded
 files, linked URLs, or podcast enclosures. Each download is subject to its own
-size cap (`VOZONDA_AUDIO_MAX_BYTES`, default 300 MB); a file exceeding the limit
+size cap (`VOZONDA_AUDIO_MAX_BYTES`, default 100 MB); a file exceeding the limit
 is refused with an error. If the feed item already carries a
 `<podcast:transcript>` tag that value is used directly instead of transcribing.
 Otherwise the audio is transcribed by faster-whisper (the Docker image includes

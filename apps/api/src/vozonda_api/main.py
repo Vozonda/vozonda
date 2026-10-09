@@ -1377,7 +1377,11 @@ def _source_error(exc: Exception) -> HTTPException:
 
     code = exc.code if isinstance(exc, SourceError) else "unreadable"
     status = 413 if code == "too_large" else 415 if code == "unsupported_type" else 422
-    return HTTPException(status, {"code": code, "hint": ERRORS[code][0]})
+    if isinstance(exc, SourceError) and exc.detail:
+        hint = exc.detail
+    else:
+        hint = ERRORS[code][0]
+    return HTTPException(status, {"code": code, "hint": hint})
 
 
 @app.post("/sources", status_code=202, dependencies=[Depends(require_write_auth)])
@@ -1397,22 +1401,23 @@ async def add_source(body: SourceIn) -> dict:
 
 @app.post("/sources/upload", status_code=202, dependencies=[Depends(require_write_auth)])
 async def upload_source(request: Request) -> dict:
-    """Upload one file as the raw request body (PDF, JPG, PNG, WebP, TXT, MD).
+    """Upload one file as the raw request body (PDF, JPG, PNG, WebP, TXT, MD, audio).
 
     The type is taken from the bytes, not the name; the file is read in memory and only
     its extracted text is kept. No multipart, so nothing is spooled to disk.
+    Audio uploads (MP3, WAV, Ogg/Opus, M4A, FLAC) may be up to VOZONDA_AUDIO_MAX_BYTES (100 MB);
+    every other file is limited to 25 MB.
     """
     from . import sources as sources_mod
 
-    limit = sources_mod.UPLOAD_MAX_BYTES
     declared = request.headers.get("content-length")
-    if declared and declared.isdigit() and int(declared) > limit:
-        raise _source_error(sources_mod.SourceError("too_large"))
+    if declared and declared.isdigit() and int(declared) > sources_mod.AUDIO_MAX_BYTES:
+        raise HTTPException(413, {"code": "too_large", "hint": f"the file is larger than {sources_mod.AUDIO_MAX_BYTES // 1_000_000} MB (audio) or 25 MB (other files)."})
     buf = bytearray()
     async for chunk in request.stream():
         buf.extend(chunk)
-        if len(buf) > limit:
-            raise _source_error(sources_mod.SourceError("too_large"))
+        if len(buf) > sources_mod.AUDIO_MAX_BYTES:
+            raise HTTPException(413, {"code": "too_large", "hint": f"the file is larger than {sources_mod.AUDIO_MAX_BYTES // 1_000_000} MB (audio) or 25 MB (other files)."})
     if not buf:
         raise HTTPException(422, "empty upload")
     try:
