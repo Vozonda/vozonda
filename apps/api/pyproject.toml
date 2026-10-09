@@ -29,7 +29,11 @@ tts-kokoro = [
     "soundfile>=0.12",
     "numpy>=1.26",
 ]
-tts = ["vozonda-api[tts-qwen]", "vozonda-api[tts-piper]", "vozonda-api[tts-kokoro]"]
+# speech to text for audio sources (tray: audio files and podcast episodes)
+stt = [
+    "faster-whisper>=1.1",
+]
+tts = ["vozonda-api[tts-qwen]", "vozonda-api[tts-piper]", "vozonda-api[tts-kokoro]", "vozonda-api[stt]"]
 mcp = [
     "mcp>=1.9",
 ]

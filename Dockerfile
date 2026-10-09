@@ -32,7 +32,8 @@ RUN pip install --no-cache-dir \
     numpy \
     qwen-tts \
     kokoro-onnx \
-    piper-tts
+    piper-tts \
+    faster-whisper
 
 # Copy API package metadata and install dependencies
 COPY apps/api /app/apps/api
