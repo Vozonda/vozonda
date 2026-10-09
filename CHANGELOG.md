@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - audio sources: upload or link MP3, M4A, WAV, OGG and OPUS files; the audio is transcribed with faster-whisper, punctuation is restored by the local LLM with word-for-word validation, and pre-existing `<podcast:transcript>` tags are extracted without re-transcribing.
 - audio sources: audio downloads have a dedicated size cap (300 MB default, `VOZONDA_AUDIO_MAX_BYTES`); exceeding it raises an error instead of truncating; punctuation restoration processes text in ~300-word chunks with per-chunk validation and `enable_thinking=false`; Whisper model is configurable via `VOZONDA_WHISPER_MODEL` (default `base`).
+- Docker build arg `WITH_QWEN_TTS` (set `VOZONDA_WITH_QWEN_TTS=1` to opt-in): pulls `torch`, `torchaudio` and `qwen-tts` into the image, tracked in #26
 
 ### Changed
 

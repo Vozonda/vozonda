@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        WITH_QWEN_TTS: ${VOZONDA_WITH_QWEN_TTS:-0}
     container_name: vozonda-api
     restart: unless-stopped
     ports:

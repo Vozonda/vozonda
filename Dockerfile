@@ -1,5 +1,8 @@
-# vozonda-api - Python / FastAPI orchestrator + TTS voice engines (Kokoro CPU default, Piper fallback, Qwen3-TTS GPU opt-in)
+# vozonda-api - Python / FastAPI orchestrator + TTS voice engines (Kokoro CPU default, Piper fallback)
+# Qwen3-TTS is opt-in via the WITH_QWEN_TTS build argument (see docker-compose.yml)
 FROM python:3.11-slim-bookworm
+
+ARG WITH_QWEN_TTS=0
 
 # Prevent python from writing pyc files and buffering stdout/stderr
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -25,15 +28,17 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # PyPI torch wheels include CPU support and CUDA support when NVIDIA runtime is present
 # kokoro-onnx (Apache-2.0) is the CPU quickstart engine; piper-tts (GPL-3.0)
 # renders the languages kokoro lacks. Both install side by side.
+# Qwen3-TTS (torch, torchaudio, qwen-tts) is opt-in via WITH_QWEN_TTS=1
 RUN pip install --no-cache-dir \
-    torch \
-    torchaudio \
     soundfile \
     numpy \
-    qwen-tts \
     kokoro-onnx \
     piper-tts \
     faster-whisper
+
+RUN if [ "$WITH_QWEN_TTS" = "1" ]; then \
+    pip install --no-cache-dir torch torchaudio qwen-tts; \
+    fi
 
 # Copy API package metadata and install dependencies
 COPY apps/api /app/apps/api
