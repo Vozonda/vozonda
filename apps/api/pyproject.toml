@@ -32,6 +32,8 @@ tts-kokoro = [
 # speech to text for audio sources (tray: audio files and podcast episodes)
 stt = [
     "faster-whisper>=1.1",
+    # faster-whisper 1.2.1 calls av.open(metadata_errors=...), which PyAV 19 removed
+    "av>=11,<19",
 ]
 tts = ["vozonda-api[tts-qwen]", "vozonda-api[tts-piper]", "vozonda-api[tts-kokoro]", "vozonda-api[stt]"]
 mcp = [

@@ -1405,19 +1405,19 @@ async def upload_source(request: Request) -> dict:
 
     The type is taken from the bytes, not the name; the file is read in memory and only
     its extracted text is kept. No multipart, so nothing is spooled to disk.
-    Audio uploads (MP3 with ID3, MPEG, WAV, Ogg, M4A, FLAC) may be up to 300 MB;
+    Audio uploads (MP3, WAV, Ogg/Opus, M4A, FLAC) may be up to VOZONDA_AUDIO_MAX_BYTES (100 MB);
     every other file is limited to 25 MB.
     """
     from . import sources as sources_mod
 
     declared = request.headers.get("content-length")
     if declared and declared.isdigit() and int(declared) > sources_mod.AUDIO_MAX_BYTES:
-        raise HTTPException(413, {"code": "too_large", "hint": "the file is too large for upload. Upload a smaller file or paste its text."})
+        raise HTTPException(413, {"code": "too_large", "hint": f"the file is larger than {sources_mod.AUDIO_MAX_BYTES // 1_000_000} MB (audio) or 25 MB (other files)."})
     buf = bytearray()
     async for chunk in request.stream():
         buf.extend(chunk)
         if len(buf) > sources_mod.AUDIO_MAX_BYTES:
-            raise HTTPException(413, {"code": "too_large", "hint": "the file is too large for upload. Upload a smaller file or paste its text."})
+            raise HTTPException(413, {"code": "too_large", "hint": f"the file is larger than {sources_mod.AUDIO_MAX_BYTES // 1_000_000} MB (audio) or 25 MB (other files)."})
     if not buf:
         raise HTTPException(422, "empty upload")
     try:

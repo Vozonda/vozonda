@@ -38,7 +38,9 @@ class TestDetectAudio:
         """ISO base media ftyp box with audio brands."""
         for brand in (b"M4A ", b"M4B ", b"mp42", b"isom", b"dash"):
             # Need at least 12 bytes: ftyp(4) + padding(4) + brand(4)
-            assert detect_audio(b"ftyp\x00\x00\x00\x00" + brand) is True, f"brand {brand!r}"
+            # real files: 4-byte box size, then b"ftyp", then the major brand
+            assert detect_audio(b"\x00\x00\x00\x20ftyp" + brand + b"\x00\x00\x02\x00") is True, f"brand {brand!r}"
+            assert detect_audio(b"ftyp\x00\x00\x00\x00" + brand) is False, "ftyp at offset 0 is not an MP4 box"
 
     def test_flac(self) -> None:
         """fLaC vendor block signature."""
@@ -107,7 +109,7 @@ class TestAddUpload:
     """add_upload() enforces per-kind size limits."""
 
     def test_size_check_audio_30mb(self) -> None:
-        """A 30 MB ID3 MP3 passes the size check (under 300 MB audio cap).
+        """A 30 MB ID3 MP3 passes the size check (under the audio cap).
 
         upload_limit must return a value >= 30 MB for audio bytes, so the
         size check in add_upload passes.
@@ -125,3 +127,54 @@ class TestAddUpload:
         limit = upload_limit(data)
         assert limit == UPLOAD_MAX_BYTES  # 25 MB
         assert len(data) > limit
+
+
+def test_audio_cap_default_is_100_mb():
+    import os
+    from vozonda_api import fetcher
+    if "VOZONDA_AUDIO_MAX_BYTES" not in os.environ:
+        assert fetcher.AUDIO_MAX_BYTES == 100_000_000
+
+
+def test_whisper_timeout_grows_with_length():
+    from vozonda_api.audio_source import MAX_AUDIO_DURATION_S, whisper_timeout
+    assert whisper_timeout(60) == 300
+    assert whisper_timeout(3600) >= 3600
+    assert whisper_timeout(0) >= MAX_AUDIO_DURATION_S  # unknown length gets the full budget
+
+
+def test_whisper_runs_with_vad():
+    from vozonda_api.audio_source import _WHISPER_SCRIPT_TEMPLATE
+    assert "vad_filter=True" in _WHISPER_SCRIPT_TEMPLATE
+
+
+def test_punctuation_runs_in_parallel_and_keeps_order(monkeypatch):
+    import asyncio
+    import time
+    from vozonda_api import audio_source as a
+
+    async def fake(chunk):
+        await asyncio.sleep(0.2 if chunk.startswith("w0 ") else 0.05)  # the first chunk is the slowest
+        return chunk.capitalize() + "."
+
+    monkeypatch.setattr(a, "_llm_punctuate_async", fake)
+    monkeypatch.setattr(a, "PUNCTUATION_CHUNK_WORDS", 3)
+    monkeypatch.setattr(a, "PUNCTUATION_CONCURRENCY", 4)
+    text = " ".join(f"w{i}" for i in range(12))  # 4 chunks
+    t0 = time.monotonic()
+    out, ok = asyncio.run(a.restore_punctuation(text))
+    assert ok
+    assert out == "W0 w1 w2. W3 w4 w5. W6 w7 w8. W9 w10 w11."
+    assert time.monotonic() - t0 < 0.35  # parallel: about the slowest chunk, not the sum (0.35 s)
+
+
+def test_punctuation_keeps_raw_chunk_when_a_word_changes(monkeypatch):
+    import asyncio
+    from vozonda_api import audio_source as a
+
+    async def fake(chunk):
+        return chunk.replace("going to", "gonna").capitalize() + "."
+
+    monkeypatch.setattr(a, "_llm_punctuate_async", fake)
+    out, ok = asyncio.run(a.restore_punctuation("we are going to test this"))
+    assert not ok and out == "we are going to test this"

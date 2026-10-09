@@ -99,7 +99,7 @@ They are transcribed locally using faster-whisper (included in the Docker image;
 install run `uv sync --extra stt` in `apps/api`). Punctuation is restored by the local LLM in
 chunks with a word-for-word check so the raw text is preserved when the LLM changes words. Two
 environment variables control transcription: `VOZONDA_WHISPER_MODEL` picks the Whisper model
-(default `base`) and `VOZONDA_AUDIO_MAX_BYTES` caps the download size (default 300 MB). A larger
+(default `base`) and `VOZONDA_AUDIO_MAX_BYTES` caps the download size (default 100 MB, about one hour of MP3). A larger
 Whisper model is slower but more accurate. A feed item that already carries a `<podcast:transcript>`
 tag uses that transcript instead of transcribing.
 
