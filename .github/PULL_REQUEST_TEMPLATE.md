@@ -1,25 +1,14 @@
----
-name: Pull Request
-about: Submit a change to Vozonda
-title: ''
-labels: ''
-assignees: ''
----
+## What and why
 
-## Related Issue
+<!-- What does this change, and why? Link the issue: "Fixes #123". -->
 
-Fixes # (issue number)
+## How you tested it
 
-## Changes Made
+<!-- Commands you ran, what you checked by hand. -->
 
-Brief description of the changes in this PR.
+## Checklist
 
-## Verification
-
-- [ ] `./scripts/verify.sh --full` passes (55/55 gates)
-- [ ] Code follows project style guidelines
-- [ ] Changes are focused and atomic
-
-## Screenshots (if UI changes)
-
-Before/after screenshots for UI changes.
+- [ ] `./scripts/verify.sh` passes locally
+- [ ] Tests added or updated for the change
+- [ ] One line in `CHANGELOG.md` under `[Unreleased]` (not needed for docs-only changes)
+- [ ] Screenshots for UI changes

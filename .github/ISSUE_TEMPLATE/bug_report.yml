@@ -1,0 +1,72 @@
+name: Bug report
+description: Something does not work as it should
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting. The more of this you fill in, the faster it gets fixed.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did you do, and what went wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Add the source https://...
+        2. Pick the show "debate"
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Vozonda version
+      description: Shown in the app footer, or `git describe --tags` in your checkout.
+      placeholder: v0.7.0
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How you run it
+      options:
+        - Docker (docker compose)
+        - Native (uv / npm)
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Script model and server
+      placeholder: qwen3:8b on Ollama
+  - type: input
+    id: engine
+    attributes:
+      label: Voice engine
+      placeholder: kokoro
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The error from the app, or `docker compose logs api --tail 100`.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched the existing issues for this bug.
+          required: true

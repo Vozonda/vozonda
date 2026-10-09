@@ -1,0 +1,99 @@
+# Checks that issues and pull requests from outside the project are complete, and says what is missing.
+#
+# No LLM and no checkout: a small script reads the issue or PR through the GitHub API, compares it with
+# the templates (.github/ISSUE_TEMPLATE/*.yml, .github/PULL_REQUEST_TEMPLATE.md), and keeps one comment
+# up to date plus the label "needs info". It runs again when the author edits the text or pushes, so the
+# comment and the label follow. Maintainer, collaborators and bots are skipped.
+name: contribution-check
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+  pull_request_target:  # base-branch code only; the contributed code is never checked out or run
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: contribution-check-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    if: >-
+      (github.event.issue.user.type || github.event.pull_request.user.type) != 'Bot' &&
+      !contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
+                github.event.issue.author_association || github.event.pull_request.author_association)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const MARK = '<!-- contribution-check -->';
+            const LABEL = 'needs info';
+            const isPR = !!context.payload.pull_request;
+            const item = isPR ? context.payload.pull_request : context.payload.issue;
+            const number = item.number;
+            const body = item.body || '';
+            const labels = (item.labels || []).map((l) => l.name);
+            const missing = [];
+
+            // text under a "### Heading" (issue forms) or "## Heading" (PR template), without HTML comments
+            const section = (title) => {
+              const re = new RegExp(`^#{2,3}\\s*${title}\\s*$([\\s\\S]*?)(?=^#{2,3}\\s|$(?![\\s\\S]))`, 'mi');
+              const m = body.match(re);
+              if (!m) return null;
+              return m[1].replace(/<!--[\s\S]*?-->/g, '').replace(/_No response_/g, '').trim();
+            };
+            const need = (title, hint) => { const t = section(title); if (!t) missing.push(hint || title); };
+
+            if (isPR) {
+              need('What and why', 'what the change does and why ("What and why")');
+              need('How you tested it', 'how you tested it ("How you tested it")');
+              const files = await github.paginate(github.rest.pulls.listFiles,
+                { owner: context.repo.owner, repo: context.repo.repo, pull_number: number, per_page: 100 });
+              const names = files.map((f) => f.filename);
+              const docsOnly = names.length > 0 && names.every((n) => n.startsWith('docs/') || n.endsWith('.md'));
+              if (!docsOnly && !names.includes('CHANGELOG.md')) missing.push('a line in `CHANGELOG.md` under `[Unreleased]`');
+            } else if (labels.includes('bug')) {
+              need('What happened');
+              need('Steps to reproduce');
+              need('What you expected');
+              need('Vozonda version');
+              need('How you run it');
+            } else if (labels.includes('enhancement')) {
+              need('The problem');
+              need('Your idea');
+            } else if (!labels.some((l) => l.startsWith('roadmap') || l === 'idea')) {
+              missing.push('the bug report or feature request template (New issue, then pick one)');
+            }
+
+            const who = `@${item.user.login}`;
+            const first = ['FIRST_TIME_CONTRIBUTOR', 'FIRST_TIMER'].includes(item.author_association);
+            const thanks = first ? `Thanks for your first ${isPR ? 'pull request' : 'issue'}, ${who}!` : `Thanks, ${who}!`;
+            const text = missing.length
+              ? `${MARK}\n${thanks} To look at this, the maintainer needs:\n\n${missing.map((m) => `- ${m}`).join('\n')}\n\n` +
+                `Edit the ${isPR ? 'description or push a commit' : 'issue'} and this note updates by itself.`
+              : `${MARK}\n${thanks} Everything the template asks for is here; the maintainer will follow up.`;
+
+            const { owner, repo } = context.repo;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: number, per_page: 100 });
+            const mine = comments.find((c) => c.user.type === 'Bot' && c.body.startsWith(MARK));
+            if (mine) {
+              if (mine.body !== text) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body: text });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number: number, body: text });
+            }
+
+            if (missing.length && !labels.includes(LABEL)) {
+              try { await github.rest.issues.getLabel({ owner, repo, name: LABEL }); }
+              catch { await github.rest.issues.createLabel({ owner, repo, name: LABEL, color: 'fbca04', description: 'Waiting for details from the author' }); }
+              await github.rest.issues.addLabels({ owner, repo, issue_number: number, labels: [LABEL] });
+            } else if (!missing.length && labels.includes(LABEL)) {
+              await github.rest.issues.removeLabel({ owner, repo, issue_number: number, name: LABEL });
+            }
+            core.info(missing.length ? `missing: ${missing.join('; ')}` : 'complete');
