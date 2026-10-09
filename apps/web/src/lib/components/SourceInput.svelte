@@ -180,7 +180,7 @@
       {:else if canSubmit}
         or press enter
       {:else}
-        articles, pdf, images, youtube, notes
+        articles, pdf, images, audio, youtube, notes
       {/if}
     </span>
 
@@ -217,7 +217,7 @@
     type="file"
     onchange={handleFileSelect}
     multiple
-    accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md"
+    accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.mp3,.m4a,.wav,.ogg,.opus"
     hidden
     aria-hidden="true"
   />

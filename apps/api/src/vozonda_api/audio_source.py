@@ -39,19 +39,48 @@ WHISPER_MODEL = env("WHISPER_MODEL", "base")
 PUNCTUATION_CHUNK_WORDS = 300
 
 
+# ISO base media brands for M4A/AAC files.
+_ISO_AUDIO_BRANDS = (b"M4A ", b"M4B ", b"mp42", b"isom", b"dash")
+
+
 def detect_audio(data: bytes, ctype: str = "", ext: str = "") -> bool:
-    """Return True if the content looks like an audio file."""
+    """Return True if the content looks like an audio file.
+
+    Recognised formats and their magic bytes::
+
+        MP3  – ID3v2 tag (b'ID3') or MPEG audio frame sync (0xFF 0xE0..0xEF)
+        WAV  – RIFF header with b'WAVE' at offset 8
+        Ogg  – Ogg page signature b'OggS'  (Vorbis, Opus, …)
+        M4A  – ISO base media ftyp box with brand M4A , M4B, mp42, isom, dash
+        FLAC – fLaC vendor block signature
+
+    The ctype and ext arguments keep working as before: a content-type
+    starting with ``audio/`` or a matching extension returns True without
+    inspecting the bytes.
+    """
     if ctype and any(ctype.startswith(p) for p in ("audio/",)):
         return True
     if ext and ext.lower() in AUDIO_EXTS:
         return True
-    if data[:2] == b"\xff\xe0":  # MPEG frame sync
+    if not data:
+        return False
+    # ID3v2 tag (MP3 with metadata)
+    if data[:3] == b"ID3":
         return True
+    # MPEG audio frame sync (bare MP3 stream)
+    if data[0] == 0xFF and (data[1] & 0xE0) == 0xE0:
+        return True
+    # WAV
     if data[:4] == b"RIFF" and len(data) > 8 and data[8:12] == b"WAVE":
         return True
+    # Ogg (Vorbis, Opus, …)
     if data[:4] == b"OggS":
         return True
-    return data[:4] == b"fLaR"
+    # ISO base media file (M4A / AAC)
+    if data[:4] == b"ftyp" and len(data) >= 12 and data[8:12] in _ISO_AUDIO_BRANDS:
+        return True
+    # FLAC
+    return data[:4] == b"fLaC"
 
 
 async def transcribe_audio(

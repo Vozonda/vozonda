@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- audio uploads are recognised (MP3 with ID3 tags, M4A) and may be up to the audio cap; the source input lists audio
+
 ## [0.7.0] - 2026-10-09
 
 ### Added
