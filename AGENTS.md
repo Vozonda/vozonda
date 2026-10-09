@@ -16,7 +16,7 @@ text or RSS -> grounded multi-voice podcast episode -> own RSS feed).
 Tagline: *Turn sources into your podcast*.
 UI/UX is the product; backends are swappable providers. Design source of
 truth: `docs/design.md` ("Calm Grid"). Architecture: `docs/architecture.md`.
-Current release milestone: v0.6.0 (dynamic continuous dev build v0.6.0-dev.NNNN;
+Current release milestone: v0.7.0 (dynamic continuous dev build v0.7.0-dev.NNNN;
 `apps/api/pyproject.toml`, `apps/web/package.json`, `vozonda_api/version.py`;
 `/meta` reports it).
 

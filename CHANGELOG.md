@@ -7,14 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-09
+
 ### Added
 
 - audio sources: upload or link MP3, M4A, WAV, OGG and OPUS files; the audio is transcribed with faster-whisper, punctuation is restored by the local LLM with word-for-word validation, and pre-existing `<podcast:transcript>` tags are extracted without re-transcribing.
 - audio sources: audio downloads have a dedicated size cap (300 MB default, `VOZONDA_AUDIO_MAX_BYTES`); exceeding it raises an error instead of truncating; punctuation restoration processes text in ~300-word chunks with per-chunk validation and `enable_thinking=false`; Whisper model is configurable via `VOZONDA_WHISPER_MODEL` (default `base`).
-- Docker build arg `WITH_QWEN_TTS` (set `VOZONDA_WITH_QWEN_TTS=1` to opt-in): pulls `torch`, `torchaudio` and `qwen-tts` into the image, tracked in #26
 
 ### Changed
 
+- Docker: the default image no longer installs torch, torchaudio and qwen-tts, so it is much smaller and carries none of their advisories. Qwen3-TTS is opt-in: set `VOZONDA_WITH_QWEN_TTS=1` in `.env` and run `docker compose up -d --build` (#26). **Upgrade note:** if you use the `qwen_tts` engine in Docker, set that variable before you rebuild.
 - web: vite 8 and @sveltejs/vite-plugin-svelte 7, upgraded together (their peer ranges only match as a pair; replaces Dependabot #15 and #16)
 - the in-app dev page is replaced by the public changelog at vozonda.com/changelog/
 
