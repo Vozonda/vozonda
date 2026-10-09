@@ -92,6 +92,19 @@ Once the containers are running, navigate to:
 
 ---
 
+## Audio Sources
+
+Audio files (mp3, m4a, wav, ogg, opus) and podcast episode enclosures are accepted as sources.
+They are transcribed locally using faster-whisper (included in the Docker image; for a native
+install run `uv sync --extra stt` in `apps/api`). Punctuation is restored by the local LLM in
+chunks with a word-for-word check so the raw text is preserved when the LLM changes words. Two
+environment variables control transcription: `VOZONDA_WHISPER_MODEL` picks the Whisper model
+(default `base`) and `VOZONDA_AUDIO_MAX_BYTES` caps the download size (default 300 MB). A larger
+Whisper model is slower but more accurate. A feed item that already carries a `<podcast:transcript>`
+tag uses that transcript instead of transcribing.
+
+---
+
 ## Where the RSS Feed Lives
 
 Every generated episode is added to your personal podcast feed:

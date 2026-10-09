@@ -39,7 +39,8 @@
 **Vozonda** unites two concepts: **voz** (*voice*) and **onda** (*wave*).
 
 Written sources become spoken audio: voices making waves. Give Vozonda articles, papers, PDFs,
-screenshots, YouTube videos, RSS feeds or your own notes, and it turns them into the show you want:
+audio files, podcast episodes, screenshots, YouTube videos, RSS feeds or your own notes, and it
+turns them into the show you want. Audio sources are transcribed locally.
 
 - **Fourteen show formats:** a deep dive, a quick brief, a debate, a critique, a morning dispatch of
   your feeds, a feature story, an explainer, a three-voice roundtable and more.
