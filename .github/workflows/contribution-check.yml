@@ -3,7 +3,11 @@
 # No LLM and no checkout: a small script reads the issue or PR through the GitHub API, compares it with
 # the templates (.github/ISSUE_TEMPLATE/*.yml, .github/PULL_REQUEST_TEMPLATE.md), and keeps one comment
 # up to date plus the label "needs info". It runs again when the author edits the text or pushes, so the
-# comment and the label follow. Maintainer, collaborators and bots are skipped.
+# comment and the label follow. Maintainers, collaborators and bots are skipped.
+#
+# Maintainers are listed by login below on purpose: author_association is not enough, because an org
+# member with private membership shows up as CONTRIBUTOR to the workflow token, so the check answered
+# the maintainer's own issues and PRs.
 name: contribution-check
 
 on:
@@ -25,6 +29,8 @@ jobs:
   check:
     if: >-
       (github.event.issue.user.type || github.event.pull_request.user.type) != 'Bot' &&
+      !contains(fromJSON('["cipherfoxie"]'),
+                github.event.issue.user.login || github.event.pull_request.user.login) &&
       !contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
                 github.event.issue.author_association || github.event.pull_request.author_association)
     runs-on: ubuntu-latest
