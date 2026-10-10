@@ -99,7 +99,7 @@ def test_public_feed_episode_media_is_open(app, monkeypatch):
     _token(monkeypatch)
     import vozonda_api.routers.feeds as feeds_mod
 
-    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda: True)
+    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda *a, **k: True)
     assert app.get("/audio/talk-0123456789ab.mp3", headers=PROXIED).status_code == 200
     # the episode list stays private even then
     assert app.get("/jobs", headers=PROXIED).status_code == 401

@@ -194,7 +194,7 @@ def test_poller_no_show_carries_nothing(test_db, monkeypatch):
 def test_watchlist_feed_404_for_rss_off_show(client, test_db, monkeypatch):
     import vozonda_api.routers.feeds as feeds_mod
 
-    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda: True)
+    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda *a, **k: True)
     slug = _make_show(client, "Quiet Show")
     num = _num(slug)
     ss.set_setting(f"show.{num}.rss", "0")
@@ -256,7 +256,7 @@ def test_default_show_watchlist(client, test_db, monkeypatch):
         assert job["show_name"] == "Main Sovgrid Podcast"
 
     # 6. Feed respect RSS setting for default show
-    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda: True)
+    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda *a, **k: True)
     ss.set_setting("show.default.rss", "0")
     conn = sqlite3.connect(str(test_db))
     conn.execute(

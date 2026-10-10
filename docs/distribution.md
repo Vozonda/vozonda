@@ -1,143 +1,105 @@
-# Distribution
+# Distribution: who can listen
 
-Each show in vozonda chooses its own reach: where its episodes can be found. There are four options:
+Each show answers one question: who can listen to it? There are three levels.
 
-| Reach | RSS feed | Nostr | What you need |
-|-------|----------|-------|---------------|
-| Private | no | no | nothing |
-| Podcast apps | yes | no | public address (`VOZONDA_PUBLIC_URL`) |
-| Nostr only | no | yes | nothing |
-| Both | yes | yes | public address |
+| Level | Feed | Who can listen | What you need |
+|-------|------|----------------|---------------|
+| Only in Vozonda | none | you, in the web UI | nothing |
+| My podcast app | private (link with the feed key) | whoever has the link | your devices reach the address (a VPN such as Tailscale, or the LAN) |
+| Public | open, and/or on Nostr | anyone | see the two channels below |
 
-## The four reaches
+A public show has two channels, at least one of them on:
 
-### Private
-The show has no public feed and does not publish to Nostr. Episodes are only accessible through the web UI or direct links you share. Use this for drafts, internal podcasts, or shows you are not ready to distribute.
+- **RSS feed:** Apple Podcasts, Spotify and every podcast app. Needs an address on the internet. Apple and
+  Spotify fetch feeds from their own servers, so an address that only your own devices reach (127.0.0.1, a
+  Tailscale or LAN name) does not work for them.
+- **Nostr:** no server of your own. Episodes go to Nostr relays, the audio to Blossom servers, signed with the
+  show's own key. Mainstream podcast apps (Apple, Spotify, Fountain, AntennaPod) read RSS, not these events;
+  in Nostr clients the episodes appear as posts with audio. The default show has no Nostr key.
 
-### Podcast apps (RSS only)
-The show has an RSS feed at `/{creator}/{show}/feed.xml` and appears in the master `/feed.xml`. Any podcast app (Apple Podcasts, Spotify, Pocket Casts, AntennaPod, etc.) can subscribe.
+## Private vs public, per show
 
-**Requirement:** your vozonda instance must be reachable at a public address. Set `VOZONDA_PUBLIC_URL` to the full public URL (e.g. `https://podcast.example.com`). The server checks reachability by requesting `VOZONDA_PUBLIC_URL/health` with a 5 s timeout.
+- `show.<n>.public` / `show.default.public` (`1` public, `0` private). A new show starts private; making it
+  public is a choice. A show from before this switch (no own value) follows the old global `feed.public`
+  (unset means private), so existing installs keep their behaviour.
+- `show.<n>.rss` / `show.default.rss`: the show has a feed at all (`0` = only in Vozonda).
+- `show.<n>.nostr`: Nostr publishing (public by nature).
 
-Without a public address, podcast apps cannot fetch the feed or the audio files.
+A private feed answers only with the feed key (404 without, so the feed's existence is not revealed); from
+another device, so do its episodes' audio, transcripts and share pages (on 127.0.0.1 the web UI plays them). The links inside a feed opened with the key carry it, so a
+podcast app plays every episode. A public show's feed and media are open.
 
-### Nostr only
-The show publishes each episode as a Nostr event (kind 54 + kind 21 for the audio blob). No RSS feed is created. The show does not appear in the master `/feed.xml`.
+**The master feed `/feed.xml`:** without the key it lists only episodes of public shows (404 when there is
+none); with the key it lists every show that has a feed. An episode belongs to its show by `show_slug`, else by
+its show name, else by its watchlist's show (digests); an episode of a deleted show follows the default show.
+A watchlist's own feed follows the watchlist's show the same way.
 
-**Requirement:** none. Nostr relays and Blossom servers are configured globally (`nostr.relays`, `nostr.blossom_servers`). The show's Nostr switch (`show.<n>.nostr`) must be on.
+**New link:** `POST /feed/key/rotate` makes a new feed key. Every old link stops working, also in podcast apps
+that subscribed with it. Use it when a link reached the wrong person.
 
-### Both (RSS + Nostr)
-The show has an RSS feed and also publishes to Nostr. Maximum reach.
+## The address other devices use
 
-## Configuration
+Feed, share and webhook links are built from one address:
 
-### Per-show switches
-Each show has two independent switches:
+1. the setting `address.public` (set in the web UI; only a plain `http(s)://host[:port]` address),
+2. else `VOZONDA_PUBLIC_URL` from `.env`,
+3. else the address the request came in on.
 
-- `show.<n>.rss` - enables the RSS feed (`1` = on, `0` = off)
-- `show.<n>.nostr` - enables Nostr publishing (`1` = on, `0` = off)
+`GET /distribution` reports it as `address`: `url`, `source` (`setting`, `env`, `none`), `scope` and
+`answers`. The scope is read from the address itself, which is reliable; whether a phone or Apple can reach it
+cannot be tested from the server:
 
-A new show starts with the global presets:
-- `distribution.rss_default` (default `1`)
-- `nostr.publish_default` (default `0`)
+| scope | meaning | addresses |
+|-------|---------|-----------|
+| `this-computer` | only this machine | 127.0.0.1, ::1, localhost |
+| `private-network` | your own devices on a VPN or LAN | `*.ts.net`, `*.local`, `*.lan`, `*.home.arpa`, 100.64.0.0/10, 10/8, 172.16/12, 192.168/16, fc00::/7 |
+| `internet` | anyone, including Apple and Spotify | everything else |
 
-Re-saving an existing show never changes its switches. Deleting a show removes both switches.
+`answers` is `true` when `<address>/health` returned 200 within 5 s (checked only for an address that was set
+and is not this computer), `false` when not, `null` when there is nothing to check. The older fields
+`public_url` and `reachable` stay for existing clients.
 
-### API
-- `GET /distribution` - returns defaults, public URL reachability, and per-show reach
-- `PUT /shows/{slug}/rss` - toggle RSS for a show (write auth required)
-- `PUT /shows/{slug}/nostr` - toggle Nostr for a show (write auth required, requires `confirm_public: true` to enable)
+**On your phone, privately:** reach Vozonda over a VPN (Tailscale, WireGuard), set the address to that name
+(for example `http://<machine>.<tailnet>.ts.net:4173`), and use a podcast app that fetches on the device,
+such as AntennaPod. Many apps fetch feeds through their own servers, which then see the link and the titles.
 
-### Defaults
-- `distribution.rss_default` - preset for new shows (default `1`)
-- `nostr.publish_default` - preset for new shows (default `0`)
+## API
 
-Change these in settings before creating shows, or toggle per show after creation.
+- `GET /distribution`: defaults, `address`, per show `rss`, `public`, `nostr`, `feed_url` (with the key for a
+  private show), and `feed_private` (some show's link carries the key)
+- `PUT /shows/{slug}/rss` with `{"enabled": bool}`: the show has a feed (write auth)
+- `PUT /shows/{slug}/public` with `{"enabled": bool}`: public or private (write auth; `default` or `s<n>`)
+- `PUT /shows/{slug}/nostr`: Nostr publishing (write auth; `confirm_public: true` to turn it on)
+- `POST /feed/key/rotate`: a new feed key, old links stop (write auth)
+- `PUT /settings/address.public` with `{"value": "https://pods.example.org"}`: the address (write auth;
+  empty clears it)
 
-## Directory submission (RSS shows only)
+Presets for new shows: `distribution.rss_default` (default `1`), `nostr.publish_default` (default `0`).
+Re-saving a show never changes its switches; deleting it removes them.
 
-If a show has RSS enabled, you can submit its feed to podcast directories. The feed URL is:
-```
-{VOZONDA_PUBLIC_URL}/{creator}/{show}/feed.xml
-```
+## Apple Podcasts and Spotify
 
-Static submission links (no API calls):
-
-- Apple Podcasts Connect: https://podcastsconnect.apple.com/
-- Spotify for Creators: https://creators.spotify.com/
-- Podcast Index: https://podcastindex.org/podcast/add
+A public show with RSS on can be submitted once: Apple Podcasts Connect
+(https://podcastsconnect.apple.com/), Spotify for Creators (https://creators.spotify.com/), Podcast Index
+(https://podcastindex.org/podcast/add). The address must be on the internet. Not yet in the feed (follow-up
+issue #58): a square cover per show, the owner e-mail the directories send their code to, and the
+channel-level explicit tag; until then a submission can be refused.
 
 ## Nostr considerations
 
-### Free Blossom servers
-The default Blossom servers (`https://nostr.download`, `https://blossom.primal.net`, `https://cdn.nostrcheck.me`) are free third-party services. They:
-- Keep audio files without a guarantee of permanence
-- May delete files at any time
-- Have size limits (some refuse files over ~30 MB, roughly half an hour of audio)
+The default Blossom servers (`https://nostr.download`, `https://blossom.primal.net`,
+`https://cdn.nostrcheck.me`) are free third-party services: no guarantee of permanence, they may delete files,
+some refuse files over about 30 MB. For important shows run your own Blossom server or use a paid one.
 
-For important shows, run your own Blossom server or use a paid provider.
+Once an episode is on Nostr relays it is replicated; deletion (NIP-09) is best effort. Treat Nostr publishing
+as permanent. If you need guaranteed removal, use RSS only, where you control the feed and the files.
 
-### Nostr posts are hard to remove
-Once an episode is published to Nostr relays, it is replicated across the network. Deletion (NIP-09) is best-effort:
-- Relays may not honor deletion requests
-- Blossom servers may not delete the audio blob
-- Clients may have cached the event
-
-Treat Nostr publishing as permanent. If you need guaranteed removal, use RSS only (where you control the feed and files).
-
-## Reachability check
-
-`GET /distribution` reports whether your public URL is reachable:
-- `reachable: true` - `VOZONDA_PUBLIC_URL/health` returned 200 OK within 5 s
-- `reachable: false` - the request failed or returned non-200
-- `reachable: null` - no `VOZONDA_PUBLIC_URL` is set
-
-If reachable is `false`, podcast apps will not be able to fetch your RSS feed or audio files. Fix your public URL or network configuration.
-
-## Examples
-
-### Private show
-```json
-{ "rss": "0", "nostr": "0" }
-```
-No public presence. Episodes only in the web UI.
-
-### Podcast apps only
-```json
-{ "rss": "1", "nostr": "0" }
-```
-RSS feed at `/{creator}/{show}/feed.xml`. Appears in master `/feed.xml`. Requires `VOZONDA_PUBLIC_URL`.
-
-### Nostr only
-```json
-{ "rss": "0", "nostr": "1" }
-```
-No RSS feed. Publishes to Nostr relays. No public URL needed.
-
-### Both
-```json
-{ "rss": "1", "nostr": "1" }
-```
-Maximum distribution. RSS feed + Nostr publishing. Requires `VOZONDA_PUBLIC_URL`.
 ## In the app
 
-Settings, section **04 shows & distribution**. Each show is one card: its name and author
-(they also go into every MP3, the player and the share page), for podcast apps its category
-and description, then its reach. The feed URL has a copy button; turning Nostr on asks for an
-explicit confirmation first, and the show's key can be backed up once (nsec). Below the cards:
-value for value, the AI disclosure label, the public address status with links to Apple
-Podcasts Connect, Spotify for Creators and Podcast Index, the defaults for new shows, and the
-relay and Blossom server lists (one per line).
-
-Two rules worth knowing:
-
-- A show created before the RSS switch existed keeps its feed (an unset switch means on; only
-  an explicit "off" removes the feed).
-- Show numbers are never reused. A deleted show keeps its key file (its Nostr identity), so a
-  new show always gets a number no show had before.
-
-## Watchlists
-
-A watchlist can publish into a numbered show (`show_slug`): its episodes inherit the show's
-reach (rss, nostr) from settings section 04 shows, including the per-watchlist feed 404 when
-the show's RSS is off. Empty keeps the standalone feed behaviour.
+Settings, section **04 shows & distribution**. Each show is one card: its name and author (they also go into
+every MP3, the player and the share page), for podcast apps its category and description, then its reach.
+The feed URL has a copy button (with the key for a private feed); turning Nostr on asks for an explicit
+confirmation first, and the show's key can be backed up once (nsec). Below the cards: value for value, the AI
+disclosure label, the public address status with links to Apple Podcasts Connect, Spotify for Creators and
+Podcast Index, the defaults for new shows, and the relay and Blossom server lists. The plain "who can listen?"
+cards, the address field and the QR code follow in the next release (#56).

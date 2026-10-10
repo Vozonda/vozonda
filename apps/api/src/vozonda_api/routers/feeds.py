@@ -3,15 +3,23 @@ import hashlib
 import hmac
 import html as htmllib
 import json
+import logging
 import sqlite3
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 
 from ..env import env
-from ..settings_store import get_private_feed_key, get_setting, resolve_show_rss
+from ..public_address import public_base
+from ..settings_store import (
+    get_private_feed_key,
+    get_setting,
+    resolve_show_public,
+    resolve_show_rss,
+)
 
 router = APIRouter()
+logger = logging.getLogger("vozonda_api.feeds")
 
 # Newest episodes a feed carries. Every request builds the whole feed, so an
 # unbounded feed grows with the archive; podcast apps only read the head.
@@ -93,19 +101,23 @@ def _enrich_description_for_feed(base_desc: str, exec_summary: str, takeaways: l
     return "\n\n".join(parts)
 
 
-def _feed_is_public() -> bool:
-    """Private unless the owner opted in: an unset value is private (the UI
-    default says so too), and a settings error fails closed."""
+def _feed_is_public(show_num: str | None = None) -> bool:
+    """Private unless the owner opted in per show; falls back to global feed.public.
+    An unset value is private (the UI default says so too), and a settings error fails closed."""
     try:
+        if show_num is not None:
+            return str(resolve_show_public(show_num) or "0").strip() == "1"
+        # Legacy global check (used for backward compatibility in some places)
         return str(get_setting("feed.public") or "0").strip() == "1"
     except Exception:
         return False
 
 
-def _require_feed_access(key: str | None) -> None:
+def _require_feed_access(key: str | None, show_num: str | None = None) -> None:
     """Feeds are private by default: a wrong or missing key is a 404, never
-    a 401, so the feed's existence is not revealed."""
-    if _feed_is_public():
+    a 401, so the feed's existence is not revealed. Per-show public check
+    when show_num is provided."""
+    if _feed_is_public(show_num):
         return
     expected = get_private_feed_key()
     if not key or not hmac.compare_digest(str(key).encode(), expected.encode()):
@@ -194,16 +206,63 @@ def _show_num_for_slug(slug: str) -> str | None:
     if candidate.isdigit() and all_settings_dict.get(f"show.{candidate}.name"):
         return candidate
 
-    # Fall back to name-based lookup
+    # Fall back to name-based lookup over every show that exists (gaps included: the old loop stopped at
+    # the first missing number, so after deleting show 1 no later show was found by name)
+    from ..settings_store import show_numbers
+
     name = slug.replace("-", " ").strip().casefold()
     if not name:
         return None
-    i = 1
-    while all_settings_dict.get(f"show.{i}.name"):
-        if str(all_settings_dict[f"show.{i}.name"]).strip().casefold() == name:
+    for i in show_numbers():
+        if str(all_settings_dict.get(f"show.{i}.name") or "").strip().casefold() == name:
             return str(i)
-        i += 1
     return None
+
+
+def _watchlist_show_num(watchlist: dict) -> str:
+    """The show a watchlist's episodes belong to: its show_slug ('default', 's<n>' or '<n>'), else the
+    default show (also when that show was deleted)."""
+    slug = str(watchlist.get("show_slug") or "").strip()
+    if not slug or slug.lower() == "default":
+        return "default"
+    return _show_num_for_slug(slug) or "default"
+
+
+def _job_show_num(job) -> str:
+    """The show an episode belongs to: its show_slug, else its show_name, else its watchlist's show, else
+    the default show (also when its show was deleted). Feeds and access.job_is_public use this one rule,
+    so a feed link and the media gate never disagree about an episode."""
+    keys = job.keys() if hasattr(job, "keys") else ()
+    for field in ("show_slug", "show_name"):
+        value = str((job[field] if field in keys else "") or "").strip()
+        if value:
+            num = _show_num_for_slug(value.replace(" ", "-") if field == "show_name" else value)
+            if num:
+                return num
+    wid = str((job["watchlist_id"] if "watchlist_id" in keys else "") or "").strip()
+    if wid:
+        try:
+            from ..watchlist import get_watchlist
+
+            return _watchlist_show_num(get_watchlist(wid))
+        except Exception:
+            # a deleted watchlist: its episodes follow the default show, like those of a deleted show
+            logger.debug("episode's watchlist %s not found; default show", wid, exc_info=True)
+    return "default"
+
+
+def _public_checker():
+    """Per request: is an episode public (its show public and with RSS on)? Cached per show, so a feed of
+    300 episodes reads the settings once per show, not once per episode."""
+    cache: dict[str, bool] = {}
+
+    def is_public(job) -> bool:
+        num = _job_show_num(job)
+        if num not in cache:
+            cache[num] = _feed_is_public(num) and resolve_show_rss(num) == "1"
+        return cache[num]
+
+    return is_public
 
 
 def _done_rows(where: str = "", params: tuple = ()) -> list:
@@ -316,7 +375,8 @@ def _now_rfc() -> str:
     return email.utils.formatdate(usegmt=True)
 
 
-def _feed_item(row: dict, base: str, now_rfc: str, recipients: list[tuple[str, str, int]], key_q: str = "") -> str:
+def _feed_item(row: dict, base: str, now_rfc: str, recipients: list[tuple[str, str, int]],
+               key_q: str = "", is_public=None) -> str:
     from ..main import _job_source_urls
 
     jid = row["id"]
@@ -341,11 +401,15 @@ def _feed_item(row: dict, base: str, now_rfc: str, recipients: list[tuple[str, s
         pub = email.utils.formatdate(float(row.get("created_at") or 0), usegmt=True)
     except Exception:
         pub = now_rfc
+    # A private episode's links carry the key when the feed was opened with it; a public one's never do.
+    # The guid never carries the key.
+    ep_is_public = (is_public or _public_checker())(row)
+    item_key_q = key_q if key_q and not ep_is_public else ""
     # A private feed's media links carry the feed key (key_q), or podcast apps outside the host get 404
     # (GHSA-crq5-73gf-fv2h). The guid stays without it, so a key change does not duplicate episodes.
-    audio_url = htmllib.escape(f"{base}/audio/{jid}.mp3{key_q}", quote=True)
+    audio_url = htmllib.escape(f"{base}/audio/{jid}.mp3{item_key_q}", quote=True)
     guid = htmllib.escape(f"{base}/e/{jid}", quote=True)
-    page_url = htmllib.escape(f"{base}/e/{jid}{key_q}", quote=True)
+    page_url = htmllib.escape(f"{base}/e/{jid}{item_key_q}", quote=True)
     meta = _master_meta(row)
     dur_ms = row.get("duration_ms")
     if dur_ms is None and isinstance(meta.get("duration_ms"), (int, float)):
@@ -371,11 +435,9 @@ def _feed_item(row: dict, base: str, now_rfc: str, recipients: list[tuple[str, s
 
 
 def _render_feed(request: Request, rows: list, *, self_path: str, key: str | None,
-                 show_title: str | None = None) -> Response:
+                 show_num: str | None = None, show_title: str | None = None) -> Response:
     """One RSS builder for the main feed and the per-show feeds."""
-    # VOZONDA_PUBLIC_URL when set: podcast apps fetch from another device, and a proxy that rewrites the
-    # host (the Vite preview does) would otherwise put 127.0.0.1 into every link
-    base = (env("PUBLIC_URL", "").strip() or str(request.base_url)).rstrip("/")
+    base = public_base(request)
     creator_addr = _setting_str("feed.creator.address")
     recipients: list[tuple[str, str, int]] = []
     if creator_addr:
@@ -385,12 +447,17 @@ def _render_feed(request: Request, rows: list, *, self_path: str, key: str | Non
             if addr and split > 0:
                 recipients.append((name, addr, split))
     now_rfc = _now_rfc()
-    key_q = f"?key={quote(key)}" if key and not _feed_is_public() else ""
-    items = "".join(_feed_item(dict(r), base, now_rfc, recipients, key_q) for r in rows)
+    # Opened with the valid key: every link may carry it, and each episode decides in _feed_item (a public
+    # episode's links stay without it). Deciding by the feed's own show lost the key on private episodes
+    # in a master feed whose default show is public.
+    valid_key = bool(key) and hmac.compare_digest(str(key).encode(), get_private_feed_key().encode())
+    key_q = f"?key={quote(key)}" if valid_key else ""
+    is_public = _public_checker()
+    items = "".join(_feed_item(dict(r), base, now_rfc, recipients, key_q, is_public) for r in rows)
 
     # A private feed's self link must carry the key, or apps that refresh
     # through atom:link lose access.
-    self_url = f"{base}{self_path}" + (f"?key={quote(key)}" if key and not _feed_is_public() else "")
+    self_url = f"{base}{self_path}" + key_q
     funding_tag = (
         f'<podcast:funding url="lightning:{htmllib.escape(creator_addr, quote=True)}">Support the show</podcast:funding>'
         if creator_addr
@@ -436,59 +503,70 @@ def _render_feed(request: Request, rows: list, *, self_path: str, key: str | Non
 @router.get("/feed/private-url", dependencies=[Depends(_require_write_auth)])
 async def feed_private_url(request: Request) -> dict:
     """Full private feed URL for the settings screen (write-authed only)."""
-    # VOZONDA_PUBLIC_URL when set: podcast apps fetch from another device, and a proxy that rewrites the
-    # host (the Vite preview does) would otherwise put 127.0.0.1 into every link
-    base = (env("PUBLIC_URL", "").strip() or str(request.base_url)).rstrip("/")
+    base = public_base(request)
     key = get_private_feed_key()
     return {
         "url": f"{base}/feed.xml?key={key}",
         "key": key,
-        "public": _feed_is_public(),
+        "public": _feed_is_public("default"),
     }
 
 
 @router.get("/feed.xml", include_in_schema=False)
 async def feed(request: Request, key: str | None = None) -> Response:
-    _require_feed_access(key)
+    """Master feed: without key, only episodes from public shows with RSS on.
+    With valid key, all episodes from shows with RSS on."""
+    has_valid_key = False
+    if key:
+        expected = get_private_feed_key()
+        if hmac.compare_digest(str(key).encode(), expected.encode()):
+            has_valid_key = True
+    # Check default show RSS
     if resolve_show_rss("default") != "1":
         raise HTTPException(404, "not found")
-    rows = _filter_rows_by_rss(_done_rows())
-    return _render_feed(request, rows, self_path="/feed.xml", key=key)
+    all_rows = _filter_rows_by_rss(_done_rows())
+    if has_valid_key:
+        # With key: all episodes from shows with RSS on
+        rows = all_rows
+    else:
+        # Without key: only episodes from public shows with RSS on
+        is_public = _public_checker()
+        rows = [row for row in all_rows if is_public(row)]
+    # For public feeds, return 200 even if empty; for private feeds without key, 404
+    if not rows and not has_valid_key and not _feed_is_public("default"):
+        raise HTTPException(404, "not found")
+    return _render_feed(request, rows, self_path="/feed.xml", key=key, show_num="default")
 
 
 @router.get("/{creator}/{show}/feed.xml", include_in_schema=False)
 async def feed_hierarchical(creator: str, show: str, request: Request, key: str | None = None) -> Response:
     """Per-show feed (#231 / #232): the watchlist's episodes, else episodes whose
     show_name matches the slug exactly (hyphens read as spaces)."""
-    _require_feed_access(key)
-    # Check if this show has RSS enabled
     show_num = _show_num_for_slug(show)
-    if show_num is not None and resolve_show_rss(show_num) != "1":
-        # Show exists but RSS is disabled - return 404
-        raise HTTPException(404, "not found")
-    try:
-        from ..watchlist import get_watchlist
-
-        watchlist_id = get_watchlist(show)["id"]
-    except Exception:
-        watchlist_id = None
-    if watchlist_id:
-        from ..watchlist import get_watchlist as _get_wl
-
+    watchlist = None
+    if show_num is None:
         try:
-            wl_show = str((_get_wl(watchlist_id).get("show_slug") or "").strip())
+            from ..watchlist import get_watchlist
+
+            watchlist = get_watchlist(show)
+            if not watchlist.get("id"):
+                watchlist = None
         except Exception:
-            wl_show = ""
-        if wl_show:
-            wl_num = "default" if wl_show.lower() == "default" else (wl_show[1:] if wl_show[:1].lower() == "s" else wl_show)
-            if (wl_num.isdigit() or wl_num == "default") and resolve_show_rss(wl_num) != "1":
-                raise HTTPException(404, "not found")
-        rows = _done_rows(" AND watchlist_id = ?", (watchlist_id,))
+            watchlist = None  # no watchlist with this id: the show part names a show
+    if watchlist:
+        # a watchlist's feed belongs to the watchlist's show (the default show when it names none), so
+        # private/public and RSS follow that show, as for every episode in it (_job_show_num)
+        show_num = _watchlist_show_num(watchlist)
+    if show_num is not None and resolve_show_rss(show_num) != "1":
+        raise HTTPException(404, "not found")
+    _require_feed_access(key, show_num)
+    if watchlist:
+        rows = _done_rows(" AND watchlist_id = ?", (watchlist["id"],))
     else:
         # exact, case-insensitive; the old LIKE let '%' in the URL match every show
         rows = _done_rows(" AND lower(show_name) IN (lower(?), lower(?))", (show, show.replace("-", " ")))
     return _render_feed(
-        request, rows, key=key,
+        request, rows, key=key, show_num=show_num,
         self_path=f"/{quote(creator, safe='')}/{quote(show, safe='')}/feed.xml",
         show_title=_setting_str("show.name") or show.replace("-", " "),
     )

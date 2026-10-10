@@ -186,7 +186,7 @@ class TestFeedRssSwitch:
     def test_per_show_feed_404_when_rss_off(self, client, monkeypatch):
         import vozonda_api.routers.feeds as feeds_mod
 
-        monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda: True)
+        monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda *a, **k: True)
 
         slug = _create_show(client, "No RSS Show")
         _set_show_rss(slug, "0")
@@ -199,7 +199,7 @@ class TestFeedRssSwitch:
     def test_per_show_feed_works_when_rss_on(self, client, monkeypatch):
         import vozonda_api.routers.feeds as feeds_mod
 
-        monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda: True)
+        monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda *a, **k: True)
 
         slug = _create_show(client, "RSS Show")
         _set_show_rss(slug, "1")
@@ -212,7 +212,7 @@ class TestFeedRssSwitch:
     def test_master_feed_excludes_rss_off_show(self, client, monkeypatch):
         import vozonda_api.routers.feeds as feeds_mod
 
-        monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda: True)
+        monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda *a, **k: True)
 
         slug_on = _create_show(client, "RSS On")
         _set_show_rss(slug_on, "1")
@@ -233,7 +233,7 @@ class TestFeedRssSwitch:
         show index (via _show_index_for), not the show name."""
         import vozonda_api.routers.feeds as feeds_mod
 
-        monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda: True)
+        monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda *a, **k: True)
 
         slug_on = _create_show(client, "RSS On Num")
         _set_show_rss(slug_on, "1")
@@ -252,7 +252,7 @@ class TestFeedRssSwitch:
         """Jobs with no show_slug (empty) are included in master feed."""
         import vozonda_api.routers.feeds as feeds_mod
 
-        monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda: True)
+        monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda *a, **k: True)
 
         _create_job(client, "ep-no-show", show_slug="")
 
@@ -440,14 +440,14 @@ def test_feed_urls_carry_the_key_when_the_feed_is_private(monkeypatch):
     from vozonda_api.settings_store import get_private_feed_key, set_setting
 
     set_setting("show.name", "Default Show")
-    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda: False)
+    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda *a, **k: False)
     data = TestClient(main_mod.app).get("/distribution").json()
     default = next(s for s in data["shows"] if s["slug"] == "default")
     assert data["feed_private"] is True
     if default["feed_url"]:
         assert default["feed_url"].endswith(f"/feed.xml?key={get_private_feed_key()}")
 
-    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda: True)
+    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda *a, **k: True)
     data = TestClient(main_mod.app).get("/distribution").json()
     assert data["feed_private"] is False
     assert all("key=" not in (s["feed_url"] or "") for s in data["shows"])

@@ -244,7 +244,9 @@ proxy the whole web UI, the token still protects it.
 
 Share pages, OG tags and clip links use the address each request comes in on;
 Caddy passes the original host through, so this works without configuration.
-If your proxy rewrites the host, set `VOZONDA_PUBLIC_URL=https://vozonda.example.com`.
+If your proxy rewrites the host, set the address in Settings (shows & distribution) or
+`VOZONDA_PUBLIC_URL=https://vozonda.example.com` in `.env`; the setting wins. See docs/distribution.md for
+private and public shows.
 
 ---
 

@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 def _public_feed(monkeypatch):
     import vozonda_api.routers.feeds as feeds_mod
 
-    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda: True)
+    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda *a, **k: True)
 
 
 def _fixed_row():

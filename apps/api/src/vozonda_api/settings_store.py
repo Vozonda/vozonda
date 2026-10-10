@@ -83,6 +83,8 @@ SETTING_KEYS = {
     "nostr.blossom_servers",
     # Distribution (VOZONDA-DISTRIBUTION)
     "distribution.rss_default",
+    # Public address setting (VOZONDA-REACH-BACKEND)
+    "address.public",
 }
 
 
@@ -133,6 +135,9 @@ _SHOW_NOSTR_KEY = re.compile(r"^show\.(?:(?:s)?[0-9]+|default)\.nostr$")
 # the per-show RSS switch; same rule as show.<n>.nostr
 _SHOW_RSS_KEY = re.compile(r"^show\.(?:(?:s)?[0-9]+|default)\.rss$")
 
+# the per-show public switch; same rule as show.<n>.rss
+_SHOW_PUBLIC_KEY = re.compile(r"^show\.(?:(?:s)?[0-9]+|default)\.public$")
+
 
 def _normalize_show_key(key: str) -> str:
     """Normalize show.N.* keys by removing optional 's' prefix from the number.
@@ -164,7 +169,7 @@ def _fetch_row(key: str):
 
 def get_setting(key: str) -> Any | None:
     norm_key = _normalize_show_key(key)
-    if norm_key not in SETTING_KEYS and not norm_key.startswith("tts.wpm.") and not _SHOW_NOSTR_KEY.match(norm_key) and not _SHOW_RSS_KEY.match(norm_key):
+    if norm_key not in SETTING_KEYS and not norm_key.startswith("tts.wpm.") and not _SHOW_NOSTR_KEY.match(norm_key) and not _SHOW_RSS_KEY.match(norm_key) and not _SHOW_PUBLIC_KEY.match(norm_key):
         raise KeyError(f"unknown setting: {key}")
     if norm_key == "feed.app.address":
         env_addr = get_node_v4v_address()
@@ -249,7 +254,7 @@ def set_setting(key: str, value: str) -> str:
     # tts.wpm.<engine> is written by the pipeline's length calibration; until
     # 2026-09-24 only get_setting allowed the prefix, every write raised, the
     # pipeline swallowed it and all length planning ran on the 160 wpm default
-    if norm_key not in SETTING_KEYS and not norm_key.startswith("tts.wpm.") and not _SHOW_NOSTR_KEY.match(norm_key) and not _SHOW_RSS_KEY.match(norm_key):
+    if norm_key not in SETTING_KEYS and not norm_key.startswith("tts.wpm.") and not _SHOW_NOSTR_KEY.match(norm_key) and not _SHOW_RSS_KEY.match(norm_key) and not _SHOW_PUBLIC_KEY.match(norm_key):
         raise KeyError(f"unknown setting: {key}")
     if norm_key == "feed.app.address" and is_node_v4v_address_locked():
         return get_node_v4v_address() or ""
@@ -473,6 +478,16 @@ def _validate(key: str, value: str) -> str:
         if val not in {"0", "1"}:
             raise ValueError(f"distribution.rss_default must be '0' or '1', got {value!r}")
         return val
+    if key == "address.public":
+        # it goes into every feed, share and webhook link: only '' or a plain http(s) address
+        from .public_address import valid_address
+
+        return valid_address(value)
+    if _SHOW_PUBLIC_KEY.match(key):
+        val = value.strip()
+        if val not in {"0", "1"}:
+            raise ValueError(f"{key} must be '0' or '1', got {value!r}")
+        return val
     return value
 
 
@@ -496,6 +511,21 @@ def resolve_show_rss(show_num: str) -> str:
     if show_num == "default":
         return "0" if get_setting("show.default.rss") == "0" else "1"
     return "0" if get_setting(f"show.{show_num}.rss") == "0" else "1"
+
+
+def resolve_show_public(show_num: str) -> str:
+    """'1' only when the show's own public switch is on; otherwise falls back to the
+    old global feed.public (only '1' if it was explicitly set to '1')."""
+    if show_num == "default":
+        val = get_setting("show.default.public")
+        if val is not None:
+            return val
+    else:
+        val = get_setting(f"show.{show_num}.public")
+        if val is not None:
+            return val
+    # Fall back to global feed.public
+    return "1" if get_setting("feed.public") == "1" else "0"
 
 
 _SHOW_KEY_NUM = re.compile(r"^show\.([0-9]+)\.")

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- private or public is now set per show (`show.<n>.public`, `show.default.public`), no longer one switch for every feed; a new show starts private; shows from before follow the old `feed.public`. The master feed `/feed.xml` without the key lists only public shows (404 when there is none); with the key it lists every show that has a feed. A private episode's media links keep the key in every feed opened with it
+
+### Added
+
+- the address other devices use can be set in the settings (`address.public`, wins over `VOZONDA_PUBLIC_URL`; only a plain http(s) address); `GET /distribution` reports it with its scope (this computer, private network or VPN, internet) and whether it answers, plus `public` per show
+- `PUT /shows/{slug}/public` and `POST /feed/key/rotate` (a new feed key; old links stop working)
+
 ### Fixed
 
 - settings: the feed links to copy left out the key, so a private feed (the default) answered 404 in the podcast app; they now carry it, with a note that anyone who has the link can listen
