@@ -81,9 +81,9 @@ def test_numbered_show_unchanged(client):
     assert client.get("/feed.xml").status_code == 200
 
 
-def test_settings_markup_two_option_control():
+def test_settings_markup_reach_card():
+    """The default show still offers no nostr (#56 moved the control into ReachCard)."""
     src = SETTINGS.read_text(encoding="utf-8")
-    assert "MASTER_REACHES" in src
-    assert "r.id === 'private' || r.id === 'apps'" in src
-    assert "disabled><Icon name=\"lock\"" not in src
-    assert "Distribution of the default show" in src
+    card = (SETTINGS.parent / "ReachCard.svelte").read_text(encoding="utf-8")
+    assert "<ReachCard" in src and "MASTER_REACHES" not in src
+    assert "const noNostr = $derived(!!show.fixed)" in card and "disabled={noNostr}" in card

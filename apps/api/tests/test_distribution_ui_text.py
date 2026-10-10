@@ -55,16 +55,19 @@ class TestSettingsDistributionSection:
         shows = src[src.index('id="sec-shows"'):src.index('id="sec-player"')]
         assert 'id="s-show-name"' in shows, "the show's name sits in its card, next to its reach"
 
-    def test_four_reaches_per_show(self) -> None:
+    def test_three_levels_per_show(self) -> None:
+        # #56: one 'who can listen?' card per show replaces the four reaches; the screen sets the switches
         src = self.source()
-        for reach in ("'private'", "'podcast apps'", "'nostr only'", "'both'"):
-            assert reach in src
-        assert "chooseReach(show, r.id)" in src and "setShowRss" in src and "setNostrPublish" in src
+        card = _read("lib/components/ReachCard.svelte")
+        for label in (">only in vozonda<", ">my podcast app<", ">public<"):
+            assert label in card
+        assert "<ReachCard" in src
+        assert "setShowRss" in src and "setShowPublic" in src and "setNostrPublish" in src
 
     def test_nostr_needs_an_inline_confirmation(self) -> None:
         src = self.source()
         assert 'role="dialog"' in src and "publish publicly" in src
-        assert "applyReach(show, reach, true)" in src, "only the confirmation sends confirm_public"
+        assert "await applyReach(show, target, true)" in src, "only the confirmation sends confirm_public"
         assert "e.key === 'Escape'" in src
 
     def test_defaults_read_the_server_defaults(self) -> None:
