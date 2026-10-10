@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- web: `qrcode-generator` (MIT) as a dependency and `lib/qr.ts` for QR codes rendered in the browser (the private feed link to a phone; nothing leaves the device)
 - the address other devices use can be set in the settings (`address.public`, wins over `VOZONDA_PUBLIC_URL`; only a plain http(s) address); `GET /distribution` reports it with its scope (this computer, private network or VPN, internet) and whether it answers, plus `public` per show
 - `PUT /shows/{slug}/public` and `POST /feed/key/rotate` (a new feed key; old links stop working)
 
