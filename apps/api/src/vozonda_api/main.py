@@ -8,6 +8,7 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import quote
 
 import httpx
 
@@ -26,6 +27,7 @@ from fastapi.responses import (
 )
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from . import access
 from . import budget as _budget
 from .clips import (
     clip_description,
@@ -166,6 +168,71 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def remote_access(request: Request, call_next):
+    """Deny remote requests by default; local use stays open (see access.py, GHSA-crq5-73gf-fv2h)."""
+    remote = access.is_remote(request)
+    authed = access.is_authed(request)
+    access.request_remote.set(remote)
+    access.request_authed.set(authed)
+    if not remote or authed or request.method == "OPTIONS":
+        return await call_next(request)
+    path = request.url.path
+    if access.is_public_path(path) or access.is_feed_path(path):
+        return await call_next(request)
+    ref = access.episode_ref(path) if request.method in ("GET", "HEAD") else None
+    if ref is not None:
+        if access.episode_media_allowed(request, ref):
+            return await call_next(request)
+        return JSONResponse({"detail": "not found"}, status_code=404)
+    if env("ENABLE_BILLING", "false").strip().lower() == "true" and (
+        path.startswith("/billing/") or request.headers.get("authorization")
+        or "token" in request.query_params or "access_token" in request.query_params
+    ):
+        return await call_next(request)  # billing routes and customers' access tokens: the route checks them
+    if not access.token():
+        return JSONResponse({"detail": "remote access needs VOZONDA_TOKEN: set it, then sign in"}, status_code=503)
+    return JSONResponse({"detail": "missing or invalid token"}, status_code=401)
+
+
+class SessionIn(BaseModel):
+    token: str
+
+
+@app.get("/auth/session")
+async def session_status(request: Request) -> dict:
+    """Whether this browser is signed in, and whether it has to be (the web UI asks on load)."""
+    remote = access.is_remote(request)
+    return {
+        "authenticated": access.is_authed(request),
+        "required": remote or bool(access.token()),
+        "token_configured": bool(access.token()),
+    }
+
+
+@app.post("/auth/session")
+async def session_login(body: SessionIn, request: Request) -> JSONResponse:
+    """Exchange VOZONDA_TOKEN for an HttpOnly session cookie, so the web UI, its audio player and live
+    updates are authorised without sending the token on every request."""
+    tok = access.token()
+    if not tok:
+        raise HTTPException(503, "no VOZONDA_TOKEN configured")
+    if not hmac.compare_digest(body.token.strip().encode(), tok.encode()):
+        raise HTTPException(401, "wrong token")
+    https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto", "").lower() == "https"
+    resp = JSONResponse({"ok": True})
+    resp.set_cookie(access.SESSION_COOKIE, access.session_value(tok), max_age=access.SESSION_MAX_AGE,
+                    httponly=True, samesite="strict", secure=https, path="/")
+    return resp
+
+
+@app.delete("/auth/session")
+async def session_logout() -> JSONResponse:
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie(access.SESSION_COOKIE, path="/")
+    return resp
 
 store = JobStore()
 tasks: dict[str, asyncio.Task] = {}
@@ -350,19 +417,9 @@ async def health() -> dict:
     return {"ok": True}
 
 
-_LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
-
-
 def _write_auth_required() -> bool:
     """A token is mandatory once vozonda is reachable beyond localhost or bills money."""
-    billing = env("ENABLE_BILLING", "false").strip().lower() == "true"
-    exposed = env("HOST", "127.0.0.1").strip() not in _LOOPBACK_HOSTS
-    # docker compose: the container binds 0.0.0.0 in its own network namespace, the host
-    # publishes the port on 127.0.0.1 only and says so here. Without this the quickstart
-    # web UI (which sends no token) got 503 on every new episode.
-    if env("PUBLISHED_ON", "").strip().lower() == "loopback":
-        exposed = False
-    return billing or exposed
+    return access.install_exposed()
 
 
 async def require_write_auth(authorization: str | None = Header(None)) -> None:
@@ -375,8 +432,11 @@ async def require_write_auth(authorization: str | None = Header(None)) -> None:
     """
     token = env("TOKEN", "")
     if not token:
-        if _write_auth_required():
+        # a request through a reverse proxy counts as remote too (GHSA-crq5-73gf-fv2h)
+        if _write_auth_required() or access.request_remote.get():
             raise HTTPException(503, "write auth not configured: set VOZONDA_TOKEN")
+        return
+    if access.request_authed.get():  # the web UI's session cookie
         return
     if not hmac.compare_digest((authorization or "").encode(), f"Bearer {token}".encode()):
         raise HTTPException(401, "missing or invalid token")
@@ -850,7 +910,8 @@ def _readable_id(url: str) -> str:
 
     tail = urlparse(url).path.strip("/").split("/")[-1] or "episode"
     base = _re.sub(r"[^a-z0-9]+", "-", tail.lower()).strip("-")[:40] or "episode"
-    return f"{base}-{uuid.uuid4().hex[:4]}"
+    # 12 hex digits (48 bits): an id must not be guessable from the title (GHSA-crq5-73gf-fv2h)
+    return f"{base}-{uuid.uuid4().hex[:12]}"
 
 
 @app.post(
@@ -1023,7 +1084,7 @@ async def create_job(
             raise HTTPException(422, "hosts must be 1, 2, or 3")
         if body.review_script and not body.combine:
             raise HTTPException(422, "script review works for one conversation, not for a digest")
-        job_id = f"digest-{uuid.uuid4().hex[:6]}"
+        job_id = f"digest-{uuid.uuid4().hex[:12]}"
         # url field holds a stable identifier for this digest; not fetched directly
         digest_url = f"digest:{job_id}"
         job = store.create(
@@ -1084,7 +1145,7 @@ async def create_job(
         raise HTTPException(422, "script review works for a single source for now")
     # readable id: for text use pasted-text prefix
     if body.text and source == body.text.strip():
-        job_id = f"pasted-{uuid.uuid4().hex[:4]}"
+        job_id = f"pasted-{uuid.uuid4().hex[:12]}"
     else:
         job_id = _readable_id(source)
     job = store.create(
@@ -2783,7 +2844,9 @@ async def share_page(job_id: str, request: Request):
         desc=htmllib.escape(f"{turns}-turn dialogue · two voices · self-hosted with vozonda"),
         url=f"{base}/e/{job_id}",
         img=img_url,
-        audio=f"{base}/audio/{job_id}.mp3",
+        # opened with the feed key (a private episode's link in the feed): the player needs it too
+        audio=f"{base}/audio/{job_id}.mp3" + (f"?key={quote(request.query_params['key'])}"
+                                              if request.query_params.get("key") else ""),
         meta_line=htmllib.escape(f"{turns} turns · 2 voices"),
         teaser=teaser + disclosure_html,
         source_links=source_links,

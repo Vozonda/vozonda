@@ -1,5 +1,5 @@
-/* vozonda service worker v2 - shell and offline audio caching */
-const SHELL_CACHE = 'vozonda-shell-v2'
+/* vozonda service worker v3 - shell and offline audio caching */
+const SHELL_CACHE = 'vozonda-shell-v3'
 const AUDIO_CACHE = 'vozonda-audio-v2'
 const OFFLINE_URL = '/offline.html'
 const SHELL_URLS = [OFFLINE_URL, '/']
@@ -26,18 +26,14 @@ self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting()
 })
 
+// Every API path is network-first: served from the asset cache, /auth/session kept answering
+// "not signed in" after a sign-in (GHSA-crq5-73gf-fv2h), and other JSON could go stale the same way.
+const API_PREFIXES = ['/jobs', '/providers', '/meta', '/settings', '/watchlist', '/feed.xml', '/doctor',
+  '/health', '/e/', '/auth', '/shows', '/sources', '/source/', '/styles', '/plugins', '/storage', '/clips',
+  '/vtt/', '/srt/', '/llm', '/distribution', '/billing', '/tts']
+
 function isApiRequest(url) {
-  return (
-    url.pathname.startsWith('/jobs') ||
-    url.pathname.startsWith('/providers') ||
-    url.pathname.startsWith('/meta') ||
-    url.pathname.startsWith('/settings') ||
-    url.pathname.startsWith('/watchlist') ||
-    url.pathname.startsWith('/feed.xml') ||
-    url.pathname.startsWith('/doctor') ||
-    url.pathname.startsWith('/health') ||
-    url.pathname.startsWith('/e')
-  )
+  return API_PREFIXES.some((p) => url.pathname.startsWith(p)) || url.pathname.endsWith('/feed.xml')
 }
 
 function isAudioRequest(url) {

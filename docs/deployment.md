@@ -213,15 +213,34 @@ Enable lingering for boot-time start (run once as the deploying user):
 sudo loginctl enable-linger $(whoami)
 ```
 
-### Step 5: Reverse Proxy (Caddy)
+### Step 5: Reaching it from other devices
 
-Install Caddy and configure `/etc/caddy/Caddyfile`:
+**Set `VOZONDA_TOKEN` first** (`openssl rand -hex 24`). Anything that reaches Vozonda from outside the host,
+through a reverse proxy, a VPN or the LAN, counts as remote and needs it: the web UI asks for it once and
+keeps a session for 30 days; API clients send `Authorization: Bearer <token>`. Without a token remote
+requests are refused.
+
+**Recommended: keep it private.** Reach the web UI over a VPN (Tailscale, WireGuard) or an SSH tunnel and
+do not put it on the public internet at all. Your phone's podcast app reaches the feed the same way. Prefer
+a podcast app that fetches feeds on the device (for example AntennaPod): many apps fetch through their own
+servers, which then see the feed address and the episode titles.
+
+**If podcast apps must reach it from the internet,** expose only what they need, with Caddy:
 
 ```caddy
 vozonda.example.com {
-    reverse_proxy localhost:4173
+    # feeds, episode audio, transcripts, share pages and artwork; the web UI stays private
+    @public path /feed.xml /*/*/feed.xml /audio/* /vtt/* /e/* /img/* /og-default.png /health
+    handle @public {
+        reverse_proxy localhost:4173
+    }
+    respond 404
 }
 ```
+
+A private feed (the default) and its episodes' audio and transcripts open only with the feed key, which the
+feed's own links carry; episodes of a public show, or published to Nostr, are open to everyone. If you do
+proxy the whole web UI, the token still protects it.
 
 Share pages, OG tags and clip links use the address each request comes in on;
 Caddy passes the original host through, so this works without configuration.
@@ -253,7 +272,7 @@ VOZONDA_MEDIA=media
 VOZONDA_WATCHLIST_INTERVAL=600
 VOZONDA_WATCHLIST_MAX_NEW=3
 
-# Auth: required as soon as VOZONDA_HOST is not a loopback address
+# Auth: required for every request from outside this host (reverse proxy, VPN, LAN)
 VOZONDA_TOKEN=
 ```
 

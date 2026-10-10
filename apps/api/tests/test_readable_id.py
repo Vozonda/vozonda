@@ -3,9 +3,10 @@ import re
 from vozonda_api.main import _readable_id
 
 
-def test_format_is_slug_plus_short_hex() -> None:
+def test_format_is_slug_plus_12_hex() -> None:
+    # 12 hex digits since GHSA-crq5-73gf-fv2h: an id must not be guessable from the title
     rid = _readable_id("https://example.com/blog/my-post")
-    assert re.fullmatch(r"[a-z0-9-]+-[0-9a-f]{4}", rid)
+    assert re.fullmatch(r"[a-z0-9-]+-[0-9a-f]{12}", rid)
 
 
 def test_slugifies_path_tail() -> None:
