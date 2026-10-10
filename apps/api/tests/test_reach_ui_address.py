@@ -66,3 +66,20 @@ def test_settings_screen_mounts_address_card_and_no_reachable_outside():
 def test_address_card_mentions_env_var():
     text = _read(ADDRESS_CARD)
     assert "VOZONDA_PUBLIC_URL" in text, "AddressCard must mention VOZONDA_PUBLIC_URL env var"
+
+def test_save_setting_reports_a_refused_value():
+    """saveSetting threw nothing on a 422, so a refused address (or any refused setting) looked saved."""
+    text = _read(API)
+    body = text[text.index("export async function saveSetting"):]
+    body = body[:body.index("\n}\n")]
+    assert "if (!res.ok)" in body and "throw new Error" in body
+
+
+def test_settings_show_a_refused_value_instead_of_saved():
+    text = _read(SETTINGS)
+    assert "saveError" in text and "not saved:" in text
+
+
+def test_address_input_is_empty_when_no_address_is_set():
+    text = _read(ADDRESS_CARD)
+    assert "a.source === 'none' ? '' : a.url" in text

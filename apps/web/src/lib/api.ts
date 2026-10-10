@@ -446,12 +446,18 @@ export async function getSettings(): Promise<{
   return get('/settings')
 }
 
+/** Save one setting. Throws with the server's message when it refuses the value (for example a 422 for
+ *  an address that is not a plain http(s) address); before, a refused value looked saved. */
 export async function saveSetting(key: string, value: string): Promise<void> {
-  await fetch(`${API_BASE}/settings/${key}`, {
+  const res = await fetch(`${API_BASE}/settings/${key}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ value })
   })
+  if (!res.ok) {
+    const b = (await res.json().catch(() => ({}))) as { detail?: unknown }
+    throw new Error(typeof b.detail === 'string' ? b.detail : `could not save (HTTP ${res.status})`)
+  }
 }
 
 export interface JobSummary {

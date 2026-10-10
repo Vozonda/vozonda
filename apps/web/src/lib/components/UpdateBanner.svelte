@@ -39,8 +39,12 @@
   }
 
   async function stopChecking() {
-    await saveSetting('update.check', '0')
-    info = null
+    try {
+      await saveSetting('update.check', '0')
+      info = null
+    } catch {
+      dismiss() // not saved (e.g. signed out): at least hide it until the next version
+    }
   }
 
   async function copy() {

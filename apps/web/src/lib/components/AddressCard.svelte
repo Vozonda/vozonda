@@ -1,4 +1,7 @@
 <script lang="ts">
+  // The address other devices use for feed, share and webhook links (setting address.public, #56).
+  // The scope comes from the address itself (reliable); whether a phone or Apple reaches it cannot be
+  // tested from the server, so the texts say who *can* reach it.
   import { saveSetting } from '../api'
   import type { DistributionMeta } from '../api'
 
@@ -10,23 +13,25 @@
     onchange?: () => void
   } = $props()
 
-  let value = $state(address.url)
+  // empty when nothing is set: the request's own address is only a fallback, not a choice
+  const shown = (a: DistributionMeta['address']) => (a.source === 'none' ? '' : a.url)
+  let value = $state('')  // set from the address by the effect below
   let err = $state('')
   let saving = $state(false)
 
   $effect(() => {
-    value = address.url
+    value = shown(address)
     err = ''
   })
 
-  async function doSave() {
+  async function save(next: string) {
     saving = true
     err = ''
     try {
-      await saveSetting('address.public', value)
+      await saveSetting('address.public', next.trim())
       onchange?.()
     } catch (e: unknown) {
-      err = e instanceof Error ? e.message : 'save failed'
+      err = e instanceof Error ? e.message : 'could not save'
     } finally {
       saving = false
     }
@@ -34,27 +39,13 @@
 
   function useCurrent() {
     value = location.origin
-    doSave()
+    void save(value)
   }
 
   function onKeydown(e: KeyboardEvent) {
     if (e.key === 'Enter') {
       e.preventDefault()
-      void doSave()
-    }
-  }
-
-  async function clear() {
-    saving = true
-    err = ''
-    try {
-      await saveSetting('address.public', '')
-      value = ''
-      onchange?.()
-    } catch (e: unknown) {
-      err = e instanceof Error ? e.message : 'clear failed'
-    } finally {
-      saving = false
+      void save(value)
     }
   }
 
@@ -78,123 +69,62 @@
   })
 </script>
 
-<div class="address-card">
-  <h4 class="mono card-title">your address for other devices</h4>
-
-  <div class="opt">
-    <label class="lab mono" for="addr-input">address</label>
+<div class="opt address-card">
+  <label class="lab mono" for="addr-input">the address your phone and apps use</label>
+  <div class="addr-row">
     <input
       id="addr-input"
-      class="mono text-in addr-input"
-      type="text"
-      placeholder={address.source === 'none' ? 'no address set' : ''}
-      value={value}
-      oninput={(e) => { value = e.currentTarget.value; err = '' }}
+      class="mono addr-input"
+      type="url"
+      inputmode="url"
+      autocomplete="off"
+      spellcheck="false"
+      placeholder="https://pods.example.org"
+      bind:value
+      oninput={() => (err = '')}
       onkeydown={onKeydown}
     />
-    <button class="mono btn-save" onclick={doSave} disabled={saving}>save</button>
-    {#if err}
-      <p class="mono help err" role="alert">{err}</p>
-    {/if}
+    <button type="button" class="mono btn-save" onclick={() => save(value)} disabled={saving}>save</button>
   </div>
+  {#if err}
+    <p class="mono help err" role="alert">{err}</p>
+  {/if}
 
-  <div class="ctl-row">
-    <button class="mono btn-link" onclick={useCurrent}>use the address you are on now</button>
+  <div class="links">
+    <button type="button" class="mono btn-link" onclick={useCurrent} disabled={saving}>use the address you are on now</button>
     {#if address.source === 'setting'}
-      <button class="mono btn-link" onclick={clear}>clear</button>
+      <button type="button" class="mono btn-link" onclick={() => save('')} disabled={saving}>clear</button>
     {/if}
   </div>
 
   {#if scopeText}
-    <p class="mono scope">{scopeText}</p>
+    <p class="mono scope">{address.source === 'none' ? 'without an address, links use ' + address.url + ': ' : ''}{scopeText}</p>
   {/if}
-
   {#if answersText}
-    <p class="mono answers">{answersText}</p>
+    <p class="mono help">{answersText}</p>
   {/if}
-
   {#if address.source === 'env'}
-    <p class="mono note">set in .env as VOZONDA_PUBLIC_URL</p>
+    <p class="mono help">set in .env as VOZONDA_PUBLIC_URL; an address saved here wins</p>
   {/if}
 </div>
 
 <style>
-  .address-card {
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: var(--space-3);
-    background: color-mix(in srgb, var(--ink) 3%, var(--paper));
-  }
-
-  .card-title {
-    font-family: var(--mono);
-    font-size: var(--ui-size);
-    color: var(--ink);
-    margin: 0 0 var(--space-2) 0;
-    font-weight: 600;
-  }
-
-  .opt {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
+  .address-card { display: grid; gap: var(--space-2); }
+  .addr-row { display: flex; gap: var(--space-2); min-width: 0; }
   .addr-input {
-    width: 100%;
-    min-width: 0;
+    flex: 1; min-width: 0; font: var(--ui-size) var(--font-mono); padding: var(--space-2) var(--space-3);
+    color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius);
   }
-
   .btn-save {
-    align-self: flex-start;
-    background: var(--ink);
-    color: var(--paper);
-    border: none;
-    border-radius: var(--radius);
-    padding: 2px var(--space-2);
-    font-family: var(--mono);
-    font-size: var(--ui-size);
-    cursor: pointer;
+    font: 600 var(--ui-size) var(--font-mono); padding: 0 var(--space-3); color: var(--paper);
+    background: var(--ink); border: 0; border-radius: var(--radius); cursor: pointer;
   }
-
-  .btn-save:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-
+  .btn-save:disabled, .btn-link:disabled { opacity: 0.5; cursor: default; }
+  .links { display: flex; flex-wrap: wrap; gap: var(--space-3); }
   .btn-link {
-    background: none;
-    border: none;
-    color: var(--ink);
-    text-decoration: underline;
-    font-family: var(--mono);
-    font-size: var(--ui-size);
-    cursor: pointer;
-    padding: 0;
+    font: var(--ui-size) var(--font-mono); color: var(--ink); background: none; border: 0; padding: 0;
+    text-decoration: underline; cursor: pointer;
   }
-
-  .btn-link:hover {
-    color: color-mix(in srgb, var(--ink) 70%, var(--paper));
-  }
-
-  .scope {
-    font-family: var(--mono);
-    font-size: var(--ui-size);
-    color: color-mix(in srgb, var(--ink) 75%, var(--paper));
-    margin: var(--space-2) 0 0 0;
-  }
-
-  .answers {
-    font-family: var(--mono);
-    font-size: var(--ui-size);
-    color: color-mix(in srgb, var(--ink) 60%, var(--paper));
-    margin: var(--space-1) 0 0 0;
-  }
-
-  .note {
-    font-family: var(--mono);
-    font-size: calc(var(--ui-size) - 1px);
-    color: color-mix(in srgb, var(--ink) 50%, var(--paper));
-    margin: var(--space-2) 0 0 0;
-  }
+  .scope { margin: 0; color: var(--ink); font-size: var(--ui-size); }
+  .err { color: var(--danger); }
 </style>

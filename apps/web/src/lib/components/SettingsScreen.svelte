@@ -311,6 +311,8 @@
   })
 
   let savedFlash = $state(false)
+  // a value the server refused (validation): shown instead of "saved"
+  let saveError = $state('')
   let savedTimer: ReturnType<typeof setTimeout> | undefined
 
   const API_BASE = import.meta.env.VITE_API_BASE ?? ''
@@ -368,9 +370,13 @@
     }
     void saveSetting(key, value).then(() => {
       if (['llm.nim_api_key', 'llm.nim_model', 'llm.opencode_models', 'llm.backup_engine'].includes(key)) void checkLlmStatus()
+      saveError = ''
       savedFlash = true
       clearTimeout(savedTimer)
       savedTimer = setTimeout(() => (savedFlash = false), 2000)
+    }).catch((err: unknown) => {
+      savedFlash = false
+      saveError = err instanceof Error ? err.message : 'could not save'
     })
   }
 
@@ -715,8 +721,8 @@
     <button class="back mono" onclick={onback} aria-label="Back to compose">
       <Icon name="back" size={13} /> back
     </button>
-    <p class="mono save-note" class:ok={savedFlash} role="status" aria-live="polite">
-      {savedFlash ? 'saved' : 'changes save instantly'}
+    <p class="mono save-note" class:ok={savedFlash} class:err={!!saveError} role="status" aria-live="polite">
+      {saveError ? `not saved: ${saveError}` : savedFlash ? 'saved' : 'changes save instantly'}
     </p>
   </div>
 
@@ -2130,7 +2136,6 @@
         {#if dist}
           <AddressCard address={dist.address} onchange={loadDistribution} />
         {/if}
-        <!-- VOZONDA_PUBLIC_URL env var falls back to setting; address scope controls reachability -->
         {#if anyFeed && dist}
           <div class="opt">
             <span class="lab mono">list your feed in podcast apps</span>
@@ -2632,6 +2637,9 @@
   }
   .save-note.ok {
     color: var(--green);
+  }
+  .save-note.err {
+    color: var(--danger);
   }
 
   section {

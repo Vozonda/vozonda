@@ -75,8 +75,10 @@ class TestSettingsDistributionSection:
         assert "one per line" in src and "comma-separated" not in src
 
     def test_public_address_and_directories(self) -> None:
+        # the address moved into AddressCard (#56); the directory links stay in the settings
         src = self.source()
-        assert "VOZONDA_PUBLIC_URL" in src and "directory_help.podcast_index" in src
+        assert "<AddressCard" in src and "directory_help.podcast_index" in src
+        assert "VOZONDA_PUBLIC_URL" in _read("lib/components/AddressCard.svelte")
 
     def test_only_existing_icons(self) -> None:
         icons = _read("lib/components/Icon.svelte")
