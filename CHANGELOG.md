@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- native install (`npm run preview -- --host`): feed links pointed at `127.0.0.1:8787`, because the preview rewrites the host; feeds now use `VOZONDA_PUBLIC_URL` when it is set, like share pages and webhooks, so a podcast app on another device can play the episodes
+- native install: the Vite preview answered "Blocked request" for the machine's name (for example its Tailscale name) and did not pass per-show feeds (`/{show}/{name}/feed.xml`) to the API; it now accepts the host of `VOZONDA_PUBLIC_URL` (plus `VOZONDA_ALLOWED_HOSTS`) and proxies per-show feeds
+
 ## [0.7.2] - 2026-10-10
 
 Security release: update if Vozonda is reachable from another device (reverse proxy, VPN, LAN, `npm run preview -- --host`). Set `VOZONDA_TOKEN` in `.env` first, then update; the web UI asks for it once.

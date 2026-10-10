@@ -373,7 +373,9 @@ def _feed_item(row: dict, base: str, now_rfc: str, recipients: list[tuple[str, s
 def _render_feed(request: Request, rows: list, *, self_path: str, key: str | None,
                  show_title: str | None = None) -> Response:
     """One RSS builder for the main feed and the per-show feeds."""
-    base = str(request.base_url).rstrip("/")
+    # VOZONDA_PUBLIC_URL when set: podcast apps fetch from another device, and a proxy that rewrites the
+    # host (the Vite preview does) would otherwise put 127.0.0.1 into every link
+    base = (env("PUBLIC_URL", "").strip() or str(request.base_url)).rstrip("/")
     creator_addr = _setting_str("feed.creator.address")
     recipients: list[tuple[str, str, int]] = []
     if creator_addr:
@@ -434,7 +436,9 @@ def _render_feed(request: Request, rows: list, *, self_path: str, key: str | Non
 @router.get("/feed/private-url", dependencies=[Depends(_require_write_auth)])
 async def feed_private_url(request: Request) -> dict:
     """Full private feed URL for the settings screen (write-authed only)."""
-    base = str(request.base_url).rstrip("/")
+    # VOZONDA_PUBLIC_URL when set: podcast apps fetch from another device, and a proxy that rewrites the
+    # host (the Vite preview does) would otherwise put 127.0.0.1 into every link
+    base = (env("PUBLIC_URL", "").strip() or str(request.base_url)).rstrip("/")
     key = get_private_feed_key()
     return {
         "url": f"{base}/feed.xml?key={key}",
