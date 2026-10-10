@@ -994,6 +994,8 @@ export interface DistributionMeta {
   defaults: { rss_default: string; nostr_publish_default: string }
   public_url: string | null
   reachable: boolean | null
+  // the feed needs its key (the default); feed_url then carries it
+  feed_private?: boolean
   shows: { slug: string; name: string; author?: string; category?: string; rss: string; nostr: string; feed_url: string | null; fixed?: boolean }[]
   directory_help: { apple_podcasts_connect: string; spotify_for_creators: string; podcast_index: string }
 }

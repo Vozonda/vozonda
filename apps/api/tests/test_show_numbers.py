@@ -54,6 +54,6 @@ def test_distribution_lists_the_default_show_and_uses_the_public_address(client,
     c.post("/shows", json={"name": "Numbered"})
     shows = c.get("/distribution").json()["shows"]
     default = next(s for s in shows if s["slug"] == "default")
-    assert default["name"] == "My Default Show" and default["feed_url"] == "https://pods.example.org/feed.xml"
+    assert default["name"] == "My Default Show" and default["feed_url"].split("?")[0] == "https://pods.example.org/feed.xml"
     numbered = next(s for s in shows if s["name"] == "Numbered")
     assert numbered["feed_url"].startswith("https://pods.example.org/")
