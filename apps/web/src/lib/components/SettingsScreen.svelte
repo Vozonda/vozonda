@@ -5,6 +5,7 @@
   import PluginsDrawer from './PluginsDrawer.svelte'
   import CustomStyleEditor from './CustomStyleEditor.svelte'
   import AddressCard from './AddressCard.svelte'
+  import ReachCard, { type ReachTarget } from './ReachCard.svelte'
   import {
     getSettings,
     getStorageStats,
@@ -17,6 +18,7 @@
     resetMusic,
     getDistribution,
     setShowRss,
+    setShowPublic,
     getNostrShowStatus,
     setNostrPublish,
     exportNostrNsec,
@@ -380,28 +382,14 @@
     })
   }
 
-  // restore the shipped defaults for one section; keys without a known
-  // default are skipped so we never write blind values
-  // ---- distribution (section 04) ----
-  type Reach = 'private' | 'apps' | 'nostr' | 'both'
+  // type alias for the show type used in distribution
   type DistShow = DistributionMeta['shows'][number]
-  const REACHES: { id: Reach; label: string; help: string }[] = [
-    { id: 'private', label: 'private', help: 'no public feed and nothing published: episodes stay in your library.' },
-    { id: 'apps', label: 'podcast apps', help: 'an rss feed for apple podcasts, spotify, pocket casts, antennapod and others. it needs your vozonda at a public address.' },
-    { id: 'nostr', label: 'nostr only', help: 'audio on free blossom servers, episodes on nostr relays, signed with the show\'s own key. no server of your own, and no rss feed.' },
-    { id: 'both', label: 'both', help: 'an rss feed for podcast apps and nostr: the widest reach.' }
-  ]
+
   let dist = $state<DistributionMeta | null>(null)
   let distError = $state('')
-  // the default show only chooses between private and podcast apps (no nostr key of its own)
-  const MASTER_REACHES = REACHES.filter((r) => r.id === 'private' || r.id === 'apps').map((r) =>
-    r.id === 'private'
-      ? { ...r, help: 'no public feed: /feed.xml returns 404, so podcast apps that subscribed to it lose the show.' }
-      : r
-  )
   let reachBusy = $state<string | null>(null)
   let nostrStatus = $state<Record<string, NostrShowStatus>>({})
-  let confirmNostr = $state<{ show: DistShow; reach: Reach } | null>(null)
+  let confirmNostr = $state<{ show: DistShow; target: ReachTarget } | null>(null)
   let confirmBtn = $state<HTMLButtonElement | null>(null)
   let nsecAsk = $state<string | null>(null)
   let nsecShown = $state<Record<string, string>>({})
@@ -409,12 +397,6 @@
 
   const distShows = $derived((dist?.shows ?? []) as DistShow[])
   const anyFeed = $derived(distShows.some((s) => s.rss === '1'))
-
-  function reachOf(s: DistShow): Reach {
-    const rss = s.rss === '1'
-    const nostr = s.nostr === '1'
-    return rss && nostr ? 'both' : rss ? 'apps' : nostr ? 'nostr' : 'private'
-  }
 
   async function loadDistribution() {
     try {
@@ -430,38 +412,37 @@
     }
   }
 
-  async function applyReach(s: DistShow, reach: Reach, confirmPublic = false) {
-    const wantRss = reach === 'apps' || reach === 'both'
-    const wantNostr = reach === 'nostr' || reach === 'both'
-    reachBusy = s.slug
-    try {
-      if ((s.rss === '1') !== wantRss) await setShowRss(s.slug, wantRss)
-      if ((s.nostr === '1') !== wantNostr) await setNostrPublish(s.slug, wantNostr, confirmPublic)
-      await loadDistribution()
-    } catch (err) {
-      distError = err instanceof Error ? err.message.toLowerCase() : 'could not change the reach'
-    } finally {
-      reachBusy = null
-    }
-  }
-
-  function chooseReach(s: DistShow, reach: Reach) {
-    const turnsNostrOn = (reach === 'nostr' || reach === 'both') && s.nostr !== '1'
-    if (turnsNostrOn) {
-      // publishing to nostr is public and hard to take back: confirm first, inline
-      confirmNostr = { show: s, reach }
+  // Set a show's three switches to the target ReachCard asks for (#56). Narrow first, open last, so a change
+  // never exposes more than its end state: public off, nostr off, then rss, then public on, then nostr on.
+  // Turning nostr on is confirmed first (public and hard to take back).
+  async function applyReach(s: DistShow, t: ReachTarget, nostrConfirmed = false) {
+    if (t.nostr && s.nostr !== '1' && !nostrConfirmed) {
+      confirmNostr = { show: s, target: t }
       void tick().then(() => confirmBtn?.focus())
       return
     }
     confirmNostr = null
-    void applyReach(s, reach)
+    distError = ''
+    reachBusy = s.slug
+    const isPublic = s.public === '1'
+    try {
+      if (!t.public && isPublic) await setShowPublic(s.slug, false)
+      if (!t.nostr && s.nostr === '1') await setNostrPublish(s.slug, false)
+      if ((s.rss === '1') !== t.rss) await setShowRss(s.slug, t.rss)
+      if (t.public && !isPublic) await setShowPublic(s.slug, true)
+      if (t.nostr && s.nostr !== '1') await setNostrPublish(s.slug, true, true)
+    } catch (err) {
+      distError = err instanceof Error ? err.message.toLowerCase() : 'could not change who can listen'
+    } finally {
+      await loadDistribution()
+      reachBusy = null
+    }
   }
 
   async function confirmPublish() {
     if (!confirmNostr) return
-    const { show, reach } = confirmNostr
-    confirmNostr = null
-    await applyReach(show, reach, true)
+    const { show, target } = confirmNostr
+    await applyReach(show, target, true)
   }
 
   async function saveShow(s: DistShow, patch: { name?: string; author?: string; category?: string }) {
@@ -1788,14 +1769,10 @@
           <p class="help">no show yet. click "new show" above or name one in the composer.</p>
         {/if}
         {#each distShows as show (show.slug)}
-          {@const reach = reachOf(show)}
-          {@const isPendingNostr = Boolean(confirmNostr && confirmNostr.show.slug === show.slug)}
-          {@const activeReach = isPendingNostr && confirmNostr ? confirmNostr.reach : reach}
           <div class="opt show-reach">
             <div class="ctl-row">
               <span class="lab mono show-name">{show.name}</span>
               <div class="show-ctl-actions">
-                <span class="mono readout">{REACHES.find((r) => r.id === activeReach)?.label}{isPendingNostr ? ' (pending)' : ''}</span>
                 {#if !show.fixed}
                   <button type="button" class="link mono delete-show-trigger" onclick={() => (deleteShowAsk = show)} aria-label={`Delete ${show.name}`}>
                     <Icon name="trash" size={13} /> delete
@@ -1819,24 +1796,7 @@
                 <textarea id="s-show-desc" class="mono text-in desc-ta" rows="3" maxlength="4000" spellcheck="false"
                   placeholder="what your show is about" value={values['show.description']}
                   onchange={(e) => set('show.description', e.currentTarget.value)}></textarea>
-                <span class="lab mono">distribution</span>
-                <div class="master-reach-row">
-                  <div class="seg reach-seg" role="radiogroup" aria-label="Distribution of the default show">
-                    {#each MASTER_REACHES as r (r.id)}
-                      <button
-                        type="button"
-                        role="radio"
-                        aria-checked={reach === r.id}
-                        class:sel={reach === r.id}
-                        disabled={reachBusy === show.slug}
-                        onclick={() => void applyReach(show, r.id)}
-                      >{r.label}</button>
-                    {/each}
-                  </div>
-                </div>
-                <p class="help reach-note">no nostr here: the default show has no nostr key of its own. name a show in the composer to publish it as nostr only or both.</p>
               </div>
-              <p class="help">{MASTER_REACHES.find((r) => r.id === reach)?.help}</p>
               <p class="help">name and author also go into every mp3, the player and the share page; category and description are for podcast apps.</p>
             {:else}
               <div class="show-fields">
@@ -1851,22 +1811,12 @@
                   <input id={`s-${show.slug}-category`} class="mono text-in" type="text" maxlength="60" placeholder="Technology"
                     value={show.category ?? ''} onchange={(e) => saveShow(show, { category: e.currentTarget.value })} />
                 {/if}
-                <span class="lab mono">distribution</span>
-                <div class="seg reach-seg" role="radiogroup" aria-label={`Distribution of ${show.name}`}>
-                  {#each REACHES as r (r.id)}
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={activeReach === r.id}
-                      class:sel={activeReach === r.id && !isPendingNostr}
-                      class:pending={isPendingNostr && confirmNostr?.reach === r.id}
-                      disabled={reachBusy === show.slug}
-                      onclick={() => chooseReach(show, r.id)}
-                    >{r.label}</button>
-                  {/each}
-                </div>
               </div>
-              <p class="help">{REACHES.find((r) => r.id === activeReach)?.help}</p>
+            {/if}
+
+            {#if dist}
+              <ReachCard {show} address={dist.address} busy={reachBusy === show.slug}
+                onchoose={(target) => void applyReach(show, target)} />
             {/if}
 
             {#if deleteShowAsk?.slug === show.slug}
@@ -3434,25 +3384,6 @@
     color: var(--ink);
     font-weight: 600;
   }
-  .reach-seg {
-    flex-wrap: wrap;
-  }
-  .reach-seg button.pending {
-    border: 1px dashed var(--green);
-    color: var(--green);
-    background: color-mix(in srgb, var(--green) 18%, transparent);
-    font-weight: 600;
-  }
-  .master-reach-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    flex-wrap: wrap;
-  }
-  .master-reach-row .help-inline {
-    font-size: calc(var(--ui-size) * 0.88);
-    color: var(--ink-soft);
-  }
   .confirm-box {
     display: grid;
     gap: var(--space-2);
@@ -3544,11 +3475,6 @@
     align-items: center;
     gap: var(--space-2) var(--space-3);
   }
-  /* the note sits under the distribution buttons, in the field column */
-  .show-fields .reach-note {
-    grid-column: 2;
-    margin: 0;
-  }
   .show-fields .desc-ta {
     resize: vertical;
     line-height: 1.5;
@@ -3556,9 +3482,6 @@
   @media (max-width: 520px) {
     .show-fields {
       grid-template-columns: minmax(0, 1fr);
-    }
-    .show-fields .reach-note {
-      grid-column: 1;
     }
   }
 </style>
