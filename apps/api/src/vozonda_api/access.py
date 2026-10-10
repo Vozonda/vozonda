@@ -149,16 +149,14 @@ def feed_key_ok(request: Request) -> bool:
 
 
 def job_is_public(job: dict) -> bool:
-    """Public when its feed is public (feed.public and its show's RSS on) or it was published to Nostr."""
+    """Public when its show is public with RSS on (the feeds' rule, feeds._public_checker) or it was
+    published to Nostr."""
     from .jobs import DB_PATH
-    from .routers.feeds import _feed_is_public, _show_num_for_slug
-    from .settings_store import resolve_show_rss
+    from .routers.feeds import _public_checker
 
-    if _feed_is_public():
-        slug = (job.get("show_slug") or "").strip()
-        num = _show_num_for_slug(slug) if slug else "default"
-        if resolve_show_rss(num or "default") == "1":
-            return True
+    # the same rule as the feeds (feeds._job_show_num + _feed_is_public), so links and gate agree
+    if _public_checker()(job):
+        return True
     try:
         with sqlite3.connect(DB_PATH) as c:
             row = c.execute("SELECT 1 FROM nostr_publish WHERE job_id = ? AND kind = 54 LIMIT 1",

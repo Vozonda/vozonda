@@ -11,7 +11,7 @@ def _public_feed(monkeypatch):
     """These tests check feed content; feeds are private by default (L2)."""
     import vozonda_api.routers.feeds as feeds_mod
 
-    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda: True)
+    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda *a, **k: True)
 
 
 @pytest.fixture

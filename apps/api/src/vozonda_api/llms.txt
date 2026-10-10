@@ -59,6 +59,9 @@ When `review_script: true` is sent with the job request, the job enters `awaitin
 - `GET /openapi.json` -- full OpenAPI schema
 - `GET /distribution` -- distribution defaults, public URL reachability, and per-show reach (RSS, Nostr)
 - `PUT /shows/{slug}/rss` -- enable/disable RSS feed for a show (write auth required)
+- `PUT /shows/{slug}/public` -- make a show's feed public or private (write auth required; private feeds need the feed key)
+- `POST /feed/key/rotate` -- new feed key; old feed links stop working (write auth required)
+- `PUT /settings/address.public` -- the address other devices use for feed, share and webhook links (write auth required)
 
 ## Billing
 

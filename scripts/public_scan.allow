@@ -11,3 +11,9 @@ apps/api/tests/test_public_scan\.py$:.*
 apps/api/tests/test_export_public\.py$:.*
 # export_public.sh is the public-export mechanism; it never ships with the repo
 scripts/export_public\.sh$:.*
+# RFC 1918 / CGNAT ranges and the Tailscale suffix the address-scope check classifies (generic, no real host)
+apps/api/src/vozonda_api/public_address\.py$:(ip_network\("(100\.64|10\.0|172\.16|192\.168)\.0\.0/[0-9]+"\)|"\.ts\.net",)
+# example addresses in the address-scope tests
+apps/api/tests/test_reach_model\.py$:(example\.ts\.net|100\.100\.1\.2|192\.168\.1\.5)
+# docs/distribution.md: the generic scope table row and a placeholder Tailscale name
+docs/distribution\.md$:(\| `private-network` \||<machine>\.<tailnet>\.ts\.net)

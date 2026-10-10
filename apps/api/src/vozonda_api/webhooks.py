@@ -45,10 +45,11 @@ async def deliver(job: dict[str, Any]) -> bool:
         if audio_url is None and state == "done":
             audio_url = f"/audio/{job_id}.mp3"
 
-        # VOZONDA-AGENT-3: build absolute audio_url and feed_url
-        base = env("PUBLIC_URL", "").rstrip("/")
-        if not base:
-            base = (job.get("public_base") or "").rstrip("/")
+        # VOZONDA-AGENT-3: absolute audio_url and feed_url; the configured address first (address.public,
+        # then VOZONDA_PUBLIC_URL), else the address the job was created on
+        from .public_address import configured_base
+
+        base = configured_base() or (job.get("public_base") or "").rstrip("/")
         if base:
             audio_url = f"{base}/audio/{job_id}.mp3" if state == "done" else audio_url
             feed_url = f"{base}/feed.xml"

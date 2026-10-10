@@ -9,7 +9,9 @@ def _public_feed(monkeypatch):
     """These tests check feed content; feeds are private by default (L2)."""
     import vozonda_api.routers.feeds as feeds_mod
 
-    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda: True)
+    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda *a, **k: True)
+    monkeypatch.setattr(feeds_mod, "resolve_show_public", lambda show_num: "1")
+    monkeypatch.setattr(feeds_mod, "resolve_show_rss", lambda show_num: "1")
 
 
 def test_feed_contains_done_jobs_with_enclosure_and_pubdate(tmp_path, monkeypatch):

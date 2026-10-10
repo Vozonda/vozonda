@@ -57,6 +57,7 @@ from .pipeline import (
     run_job,
 )
 from .providers import MEDIA_DIR
+from .public_address import public_base
 from .routers.billing import router as billing_router
 from .routers.distribution import router as distribution_router
 from .routers.feeds import router as feed_router
@@ -2041,6 +2042,9 @@ async def create_show(body: ShowIn) -> dict:
     # keeps its own switch
     if get_setting(f"show.{idx}.rss") is None:
         db_settings[f"show.{idx}.rss"] = get_setting("distribution.rss_default") or "1"
+    # a new show starts private, whatever the old global feed.public says (#56); making it public is a choice
+    if get_setting(f"show.{idx}.public") is None:
+        db_settings[f"show.{idx}.public"] = "0"
     for k, v in db_settings.items():
         conn.execute(
             "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -2100,7 +2104,8 @@ async def delete_show(slug: str) -> dict:
 
     from .settings_store import _conn
     conn = _conn()
-    for k in [f"show.{idx}.name", f"show.{idx}.author", f"show.{idx}.category", f"show.{idx}.nostr", f"show.{idx}.rss"]:
+    for k in [f"show.{idx}.name", f"show.{idx}.author", f"show.{idx}.category", f"show.{idx}.nostr", f"show.{idx}.rss",
+              f"show.{idx}.public"]:
         conn.execute("DELETE FROM settings WHERE key = ?", (k,))
     conn.commit()
     conn.close()
@@ -2465,12 +2470,6 @@ async def render_watchlist_digest(wid: str) -> dict:
     return {"digest_job": res["digest_job"], "sources": res["sources"]}
 
 
-def _public_base(request: Request) -> str:
-    """Public address for share pages, OG tags and clip links: VOZONDA_PUBLIC_URL when set
-    (needed behind a proxy that rewrites the host), else the address the request came in on.
-    Never a hardcoded domain: every self-hosted install has its own (same rule as webhooks.py)."""
-    return (env("PUBLIC_URL", "").strip() or str(request.base_url)).rstrip("/")
-
 SHARE_TMPL = """<!doctype html>
 <html lang="en">
 <head>
@@ -2777,7 +2776,7 @@ async def share_page(job_id: str, request: Request):
         f"<p><b>{htmllib.escape(l['speaker'])}</b>{htmllib.escape(l['text'][:280])}</p>"
         for l in lines
     ) + "</blockquote>" if lines else ""
-    base = _public_base(request)
+    base = public_base(request)
     # Rich OG image: prefer per-episode cover if available, else default
     og_img = job.get("og_image")
     if og_img:
@@ -3002,7 +3001,7 @@ async def clip_share_page(job_id: str, clip_spec: str, request: Request):
         for l in clip_lines
     )
     turns = len(script)
-    base = _public_base(request)
+    base = public_base(request)
     show_name = (job.get("show_name") or "").strip() or "vozonda"
     show_author = (job.get("show_author") or "").strip() or "vozonda"
     language = job.get("language") or "en"
@@ -3219,7 +3218,7 @@ async def create_clip(body: ClipCreateIn, request: Request) -> dict:
         except (FileNotFoundError, ValueError, RuntimeError) as exc:
             raise HTTPException(409, f"audio slicing failed: {exc}")
 
-    base = _public_base(request)
+    base = public_base(request)
     share_slug = quote_slug if quote_slug and quote_slug != "clip" else ""
     share_url = f"{base}/e/{job_id}/clip/{turn_start}-{turn_end}"
     if share_slug:
@@ -3291,7 +3290,7 @@ async def list_clips(job_id: str, request: Request) -> list[dict]:
 
         duration = get_audio_duration_sync(clip_path_obj)
 
-        base = _public_base(request)
+        base = public_base(request)
         # SEO share URL includes slug when present
         share_url = f"{base}/e/{job_id}/clip/{turn_start}-{turn_end}"
         if slug:
