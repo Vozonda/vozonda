@@ -4,6 +4,7 @@
   import ProviderStrip from './ProviderStrip.svelte'
   import PluginsDrawer from './PluginsDrawer.svelte'
   import CustomStyleEditor from './CustomStyleEditor.svelte'
+  import AddressCard from './AddressCard.svelte'
   import {
     getSettings,
     getStorageStats,
@@ -2124,21 +2125,12 @@
 
       <section aria-labelledby="address-h">
         <div class="sec-head">
-          <h3 id="address-h" class="mono"><Icon name="link" size={18} /> public address</h3>
+          <h3 id="address-h" class="mono"><Icon name="link" size={18} /> address for other devices</h3>
         </div>
-        <div class="opt">
-          <div class="ctl-row">
-            <span class="lab mono">reachable from outside</span>
-            <span class="mono readout"
-              class:ok={dist?.reachable === true}
-              class:bad={dist?.reachable === false}
-            >{!dist ? '…' : dist.public_url === null ? 'no public address set' : dist.reachable ? 'yes' : 'no'}</span>
-          </div>
-          {#if dist?.public_url}
-            <p class="help mono">{dist.public_url}</p>
-          {/if}
-          <p class="help">podcast apps fetch your feed from their own servers, so this address must be reachable from the internet (set VOZONDA_PUBLIC_URL, VOZONDA_PUBLIC_URL still works, for example behind a reverse proxy). nostr needs no public address: episodes go to relays and the audio to blossom servers.</p>
-        </div>
+        {#if dist}
+          <AddressCard address={dist.address} onchange={loadDistribution} />
+        {/if}
+        <!-- VOZONDA_PUBLIC_URL env var falls back to setting; address scope controls reachability -->
         {#if anyFeed && dist}
           <div class="opt">
             <span class="lab mono">list your feed in podcast apps</span>
