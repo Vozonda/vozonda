@@ -446,12 +446,18 @@ export async function getSettings(): Promise<{
   return get('/settings')
 }
 
+/** Save one setting. Throws with the server's message when it refuses the value (for example a 422 for
+ *  an address that is not a plain http(s) address); before, a refused value looked saved. */
 export async function saveSetting(key: string, value: string): Promise<void> {
-  await fetch(`${API_BASE}/settings/${key}`, {
+  const res = await fetch(`${API_BASE}/settings/${key}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ value })
   })
+  if (!res.ok) {
+    const b = (await res.json().catch(() => ({}))) as { detail?: unknown }
+    throw new Error(typeof b.detail === 'string' ? b.detail : `could not save (HTTP ${res.status})`)
+  }
 }
 
 export interface JobSummary {
@@ -990,13 +996,21 @@ export function coverUrl(ogImage: string | null | undefined): string | null {
 // Distribution endpoints (VOZONDA-DISTRIBUTION)
 // ---------------------------------------------------------------------------
 
+export interface DistributionAddress {
+  url: string
+  source: 'setting' | 'env' | 'none'
+  scope: 'this-computer' | 'private-network' | 'internet' | null
+  answers: boolean | null
+}
+
 export interface DistributionMeta {
   defaults: { rss_default: string; nostr_publish_default: string }
+  address: DistributionAddress
   public_url: string | null
   reachable: boolean | null
   // the feed needs its key (the default); feed_url then carries it
   feed_private?: boolean
-  shows: { slug: string; name: string; author?: string; category?: string; rss: string; nostr: string; feed_url: string | null; fixed?: boolean }[]
+  shows: { slug: string; name: string; author?: string; category?: string; rss: string; nostr: string; feed_url: string | null; fixed?: boolean; public?: string }[]
   directory_help: { apple_podcasts_connect: string; spotify_for_creators: string; podcast_index: string }
 }
 
@@ -1021,6 +1035,30 @@ export async function setShowRss(slug: string, enabled: boolean): Promise<ShowRs
     throw new Error(b.detail ?? `HTTP ${res.status}`)
   }
   return (await res.json()) as ShowRssResult
+}
+
+export async function setShowPublic(slug: string, enabled: boolean): Promise<void> {
+  const res = await fetch(`${API_BASE}/shows/${encodeURIComponent(slug)}/public`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled })
+  })
+  if (!res.ok) {
+    const b = await res.json().catch(() => ({})) as { detail?: string }
+    throw new Error(b.detail ?? `HTTP ${res.status}`)
+  }
+}
+
+export async function rotateFeedKey(): Promise<string> {
+  const res = await fetch(`${API_BASE}/feed/key/rotate`, {
+    method: 'POST'
+  })
+  if (!res.ok) {
+    const b = await res.json().catch(() => ({})) as { detail?: string }
+    throw new Error(b.detail ?? `HTTP ${res.status}`)
+  }
+  const data = await res.json() as { key: string }
+  return data.key
 }
 
 export async function updateShow(slug: string, show: { name: string; author: string; category: string }): Promise<ShowItem> {

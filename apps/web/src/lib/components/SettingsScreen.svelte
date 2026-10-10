@@ -4,6 +4,7 @@
   import ProviderStrip from './ProviderStrip.svelte'
   import PluginsDrawer from './PluginsDrawer.svelte'
   import CustomStyleEditor from './CustomStyleEditor.svelte'
+  import AddressCard from './AddressCard.svelte'
   import {
     getSettings,
     getStorageStats,
@@ -310,6 +311,8 @@
   })
 
   let savedFlash = $state(false)
+  // a value the server refused (validation): shown instead of "saved"
+  let saveError = $state('')
   let savedTimer: ReturnType<typeof setTimeout> | undefined
 
   const API_BASE = import.meta.env.VITE_API_BASE ?? ''
@@ -367,9 +370,13 @@
     }
     void saveSetting(key, value).then(() => {
       if (['llm.nim_api_key', 'llm.nim_model', 'llm.opencode_models', 'llm.backup_engine'].includes(key)) void checkLlmStatus()
+      saveError = ''
       savedFlash = true
       clearTimeout(savedTimer)
       savedTimer = setTimeout(() => (savedFlash = false), 2000)
+    }).catch((err: unknown) => {
+      savedFlash = false
+      saveError = err instanceof Error ? err.message : 'could not save'
     })
   }
 
@@ -714,8 +721,8 @@
     <button class="back mono" onclick={onback} aria-label="Back to compose">
       <Icon name="back" size={13} /> back
     </button>
-    <p class="mono save-note" class:ok={savedFlash} role="status" aria-live="polite">
-      {savedFlash ? 'saved' : 'changes save instantly'}
+    <p class="mono save-note" class:ok={savedFlash} class:err={!!saveError} role="status" aria-live="polite">
+      {saveError ? `not saved: ${saveError}` : savedFlash ? 'saved' : 'changes save instantly'}
     </p>
   </div>
 
@@ -2124,21 +2131,11 @@
 
       <section aria-labelledby="address-h">
         <div class="sec-head">
-          <h3 id="address-h" class="mono"><Icon name="link" size={18} /> public address</h3>
+          <h3 id="address-h" class="mono"><Icon name="link" size={18} /> address for other devices</h3>
         </div>
-        <div class="opt">
-          <div class="ctl-row">
-            <span class="lab mono">reachable from outside</span>
-            <span class="mono readout"
-              class:ok={dist?.reachable === true}
-              class:bad={dist?.reachable === false}
-            >{!dist ? '…' : dist.public_url === null ? 'no public address set' : dist.reachable ? 'yes' : 'no'}</span>
-          </div>
-          {#if dist?.public_url}
-            <p class="help mono">{dist.public_url}</p>
-          {/if}
-          <p class="help">podcast apps fetch your feed from their own servers, so this address must be reachable from the internet (set VOZONDA_PUBLIC_URL, VOZONDA_PUBLIC_URL still works, for example behind a reverse proxy). nostr needs no public address: episodes go to relays and the audio to blossom servers.</p>
-        </div>
+        {#if dist}
+          <AddressCard address={dist.address} onchange={loadDistribution} />
+        {/if}
         {#if anyFeed && dist}
           <div class="opt">
             <span class="lab mono">list your feed in podcast apps</span>
@@ -2640,6 +2637,9 @@
   }
   .save-note.ok {
     color: var(--green);
+  }
+  .save-note.err {
+    color: var(--danger);
   }
 
   section {
