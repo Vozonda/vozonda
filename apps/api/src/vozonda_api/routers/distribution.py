@@ -51,6 +51,12 @@ async def get_distribution(request: Request) -> dict:
     from ..settings_store import show_numbers
 
     base = (public_url or str(request.base_url)).rstrip("/")
+    # A private feed (the default) answers only with its key: the links to copy must carry it, or a
+    # podcast app gets 404. Only authorised callers reach this endpoint from outside (access.py).
+    from ..settings_store import get_private_feed_key
+    from .feeds import _feed_is_public
+
+    key_q = "" if _feed_is_public() else f"?key={quote(get_private_feed_key(), safe='')}"
     shows = []
     all_settings_dict = all_settings()
     for i in show_numbers():
@@ -65,14 +71,14 @@ async def get_distribution(request: Request) -> dict:
             "category": all_settings_dict.get(f"show.{i}.category") or "",
             "rss": rss,
             "nostr": resolve_show_nostr(str(i)),
-            "feed_url": f"{base}/{slug}/{show_name_hyphen}/feed.xml" if rss == "1" else None,
+            "feed_url": f"{base}/{slug}/{show_name_hyphen}/feed.xml{key_q}" if rss == "1" else None,
         })
     default_name = all_settings_dict.get("show.name") or ""
     if default_name:
         # the unnumbered default show: its episodes are in the master feed; no own key
         default_rss = resolve_show_rss("default")
         shows.append({"slug": "default", "name": default_name, "rss": default_rss, "nostr": "0",
-                      "feed_url": f"{base}/feed.xml" if default_rss == "1" else None, "fixed": True})
+                      "feed_url": f"{base}/feed.xml{key_q}" if default_rss == "1" else None, "fixed": True})
 
     # Directory help (static links)
     directory_help = {
@@ -87,6 +93,7 @@ async def get_distribution(request: Request) -> dict:
             "nostr_publish_default": nostr_publish_default,
         },
         "public_url": public_url or None,
+        "feed_private": bool(key_q),
         "reachable": reachable,
         "shows": shows,
         "directory_help": directory_help,

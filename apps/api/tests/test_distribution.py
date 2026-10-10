@@ -302,7 +302,10 @@ class TestDistributionEndpoint:
         assert show["rss"] == "1"
         assert show["nostr"] == "0"
         assert show["feed_url"] is not None
-        assert show["feed_url"].endswith(f"/{slug}/Test-Show/feed.xml")
+        # feeds are private by default, so the link to copy carries the key
+        path, _, query = show["feed_url"].partition("?")
+        assert path.endswith(f"/{slug}/Test-Show/feed.xml")
+        assert query.startswith("key=")
         # Directory help is static
         assert "apple_podcasts_connect" in data["directory_help"]
         assert "spotify_for_creators" in data["directory_help"]
@@ -426,3 +429,25 @@ def test_a_show_from_before_the_switch_keeps_its_feed(tmp_path, monkeypatch):
     assert ss.resolve_show_rss("7") == "1"
     ss.set_setting("show.7.rss", "0")
     assert ss.resolve_show_rss("7") == "0"
+
+
+def test_feed_urls_carry_the_key_when_the_feed_is_private(monkeypatch):
+    """A private feed answers only with its key; the link the settings offer to copy must carry it."""
+    from fastapi.testclient import TestClient
+
+    import vozonda_api.main as main_mod
+    import vozonda_api.routers.feeds as feeds_mod
+    from vozonda_api.settings_store import get_private_feed_key, set_setting
+
+    set_setting("show.name", "Default Show")
+    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda: False)
+    data = TestClient(main_mod.app).get("/distribution").json()
+    default = next(s for s in data["shows"] if s["slug"] == "default")
+    assert data["feed_private"] is True
+    if default["feed_url"]:
+        assert default["feed_url"].endswith(f"/feed.xml?key={get_private_feed_key()}")
+
+    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda: True)
+    data = TestClient(main_mod.app).get("/distribution").json()
+    assert data["feed_private"] is False
+    assert all("key=" not in (s["feed_url"] or "") for s in data["shows"])

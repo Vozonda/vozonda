@@ -1908,6 +1908,9 @@
                   <Icon name={copiedKey === `feed-${show.slug}` ? 'check' : 'copy'} size={13} /> {copiedKey === `feed-${show.slug}` ? 'copied' : 'copy'}
                 </button>
               </div>
+              {#if dist?.feed_private}
+                <p class="help">private feed: the link carries its key, so anyone who has the link can listen. keep it on your own devices.</p>
+              {/if}
             {/if}
 
             {#if !show.fixed && show.nostr === '1'}
