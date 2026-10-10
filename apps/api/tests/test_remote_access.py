@@ -160,3 +160,10 @@ def test_loopback_host_names_stay_local(app):
 def test_extra_local_host_names(app, monkeypatch):
     monkeypatch.setenv("VOZONDA_LOCAL_HOSTNAMES", "testserver, vozonda.lan")
     assert app.get("/jobs", headers={"Host": "vozonda.lan"}).status_code == 200
+
+
+def test_billing_mode_does_not_let_any_bearer_through(app, monkeypatch):
+    monkeypatch.setenv("VOZONDA_ENABLE_BILLING", "true")
+    _token(monkeypatch)
+    assert app.get("/jobs", headers={"Authorization": "Bearer junk"}).status_code == 401
+    assert app.get("/jobs", headers={"Authorization": "Bearer s3cret"}).status_code == 200

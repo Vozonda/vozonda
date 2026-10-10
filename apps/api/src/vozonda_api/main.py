@@ -187,11 +187,20 @@ async def remote_access(request: Request, call_next):
         if access.episode_media_allowed(request, ref):
             return await call_next(request)
         return JSONResponse({"detail": "not found"}, status_code=404)
-    if env("ENABLE_BILLING", "false").strip().lower() == "true" and (
-        path.startswith("/billing/") or request.headers.get("authorization")
-        or "token" in request.query_params or "access_token" in request.query_params
-    ):
-        return await call_next(request)  # billing routes and customers' access tokens: the route checks them
+    if env("ENABLE_BILLING", "false").strip().lower() == "true":
+        # billing routes check their user themselves; elsewhere only a customer's valid access token passes
+        # (any Authorization header alone would have let reads such as GET /jobs through)
+        if path.startswith("/billing/"):
+            return await call_next(request)
+        auth = request.headers.get("authorization") or ""
+        candidate = (request.query_params.get("access_token") or request.query_params.get("token")
+                     or (auth[7:] if auth.lower().startswith("bearer ") else ""))
+        if candidate:
+            try:
+                if _validate_access_token(candidate):
+                    return await call_next(request)
+            except HTTPException:
+                pass
     if not access.token():
         return JSONResponse({"detail": "remote access needs VOZONDA_TOKEN: set it, then sign in"}, status_code=503)
     return JSONResponse({"detail": "missing or invalid token"}, status_code=401)
