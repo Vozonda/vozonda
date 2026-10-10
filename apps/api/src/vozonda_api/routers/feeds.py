@@ -316,7 +316,7 @@ def _now_rfc() -> str:
     return email.utils.formatdate(usegmt=True)
 
 
-def _feed_item(row: dict, base: str, now_rfc: str, recipients: list[tuple[str, str, int]]) -> str:
+def _feed_item(row: dict, base: str, now_rfc: str, recipients: list[tuple[str, str, int]], key_q: str = "") -> str:
     from ..main import _job_source_urls
 
     jid = row["id"]
@@ -341,8 +341,11 @@ def _feed_item(row: dict, base: str, now_rfc: str, recipients: list[tuple[str, s
         pub = email.utils.formatdate(float(row.get("created_at") or 0), usegmt=True)
     except Exception:
         pub = now_rfc
-    audio_url = htmllib.escape(f"{base}/audio/{jid}.mp3", quote=True)
-    page_url = htmllib.escape(f"{base}/e/{jid}", quote=True)
+    # A private feed's media links carry the feed key (key_q), or podcast apps outside the host get 404
+    # (GHSA-crq5-73gf-fv2h). The guid stays without it, so a key change does not duplicate episodes.
+    audio_url = htmllib.escape(f"{base}/audio/{jid}.mp3{key_q}", quote=True)
+    guid = htmllib.escape(f"{base}/e/{jid}", quote=True)
+    page_url = htmllib.escape(f"{base}/e/{jid}{key_q}", quote=True)
     meta = _master_meta(row)
     dur_ms = row.get("duration_ms")
     if dur_ms is None and isinstance(meta.get("duration_ms"), (int, float)):
@@ -354,12 +357,12 @@ def _feed_item(row: dict, base: str, now_rfc: str, recipients: list[tuple[str, s
     return (
         f"<item><title>{title}</title>"
         f"<link>{page_url}</link>"
-        f"<guid isPermaLink=\"true\">{page_url}</guid>"
+        f"<guid isPermaLink=\"true\">{guid}</guid>"
         f"<description>{desc}</description>"
         f"<itunes:summary>{desc}</itunes:summary>"
         f"{expl_tag}"
         f"{_value_xml(dur_ms, recipients)}"
-        f'<podcast:transcript url="{base}/vtt/{jid}.vtt" type="text/vtt" />'
+        f'<podcast:transcript url="{htmllib.escape(f"{base}/vtt/{jid}.vtt{key_q}", quote=True)}" type="text/vtt" />'
         f"{_chapters_xml(row)}"
         f"<pubDate>{pub}</pubDate>"
         f"<enclosure url=\"{audio_url}\" length=\"{length}\" type=\"audio/mpeg\" />"
@@ -380,7 +383,8 @@ def _render_feed(request: Request, rows: list, *, self_path: str, key: str | Non
             if addr and split > 0:
                 recipients.append((name, addr, split))
     now_rfc = _now_rfc()
-    items = "".join(_feed_item(dict(r), base, now_rfc, recipients) for r in rows)
+    key_q = f"?key={quote(key)}" if key and not _feed_is_public() else ""
+    items = "".join(_feed_item(dict(r), base, now_rfc, recipients, key_q) for r in rows)
 
     # A private feed's self link must carry the key, or apps that refresh
     # through atom:link lose access.

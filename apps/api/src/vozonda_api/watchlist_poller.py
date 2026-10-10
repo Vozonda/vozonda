@@ -386,7 +386,7 @@ async def trigger_watchlist_digest(
             update_last_scheduled_run(wid, run_at)
         return None
 
-    job_id = f"digest-{uuid.uuid4().hex[:6]}"
+    job_id = f"digest-{uuid.uuid4().hex[:12]}"
     store.create(
         job_id,
         f"digest:{job_id}",

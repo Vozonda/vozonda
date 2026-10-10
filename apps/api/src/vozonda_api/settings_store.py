@@ -75,6 +75,8 @@ SETTING_KEYS = {
     "player.autoscroll",
     "player.boost_placement",
     "disclosure.ai_label",
+    # "0" turns off the check for new releases (updates.py)
+    "update.check",
     # Nostr publishing (VOZONDA-NOSTR)
     "nostr.publish_default",
     "nostr.relays",

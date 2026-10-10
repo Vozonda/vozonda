@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-10-10
+
+Security release: update if Vozonda is reachable from another device (reverse proxy, VPN, LAN, `npm run preview -- --host`). Set `VOZONDA_TOKEN` in `.env` first, then update; the web UI asks for it once.
+
+### Security
+
+- remote access needs the token (GHSA-crq5-73gf-fv2h): a request that reaches Vozonda from outside the host, through a reverse proxy, a VPN or the LAN, now needs `VOZONDA_TOKEN`; before, a reverse proxy in front of the web UI made the API act as if every request were local, so the episode list, sources, transcripts, audio and settings were open, and episodes could be started. The web UI asks for the token once and keeps an HttpOnly session for 30 days. Local use on 127.0.0.1 is unchanged and needs no token
+- a private episode's audio, transcript and share page open from outside only with the feed key, which a private feed's links now carry; episodes of a public show or published to Nostr stay open. New episode ids carry 12 random hex digits instead of 4
+- a request also counts as remote when it is addressed by a name other than a loopback one (the LAN or VPN address of the machine, or a proxy that keeps the original host), and the Vite preview (`npm run preview -- --host`) passes the client address on; before, the preview made every request look local. `VOZONDA_LOCAL_HOSTNAMES` adds names that count as local
+- docs: the reverse-proxy example exposes only feeds, audio, transcripts and share pages and keeps the web UI private (VPN or SSH tunnel); if you reach Vozonda from another device in any way, set `VOZONDA_TOKEN` before updating
+
+### Added
+
+- update notice: when a newer release exists the web UI shows it (marked when it is a security release) with the command to update, `git pull && docker compose up -d --build`; it asks GitHub at most every six hours, only while the UI is open, and "stop checking" turns it off (setting `update.check`)
+
+### Fixed
+
+- Docker web container: `/shows`, `/styles`, `/plugins`, `/music`, `/storage`, `/clips`, transcripts and per-show feeds were not passed to the API by the bundled nginx, so those screens and links failed in the Docker setup
+- the service worker served `/auth/session` and other API answers from its asset cache; every API path is now network-first
+
 ## [0.7.1] - 2026-10-09
 
 ### Fixed

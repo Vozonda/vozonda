@@ -25,7 +25,9 @@ def _page(monkeypatch, env_url):
     store = MagicMock()
     store.get.return_value = json.loads(json.dumps(_JOB))
     client = TestClient(main_module.app, base_url="http://podcasts.example.org")
+    # a share page reached by its public host name is remote (GHSA-crq5-73gf-fv2h): the episode is public here
     with patch.object(main_module, "store", store), \
+            patch("vozonda_api.access.job_is_public", return_value=True), \
             patch("vozonda_api.settings_store.get_setting", return_value=None):
         r = client.get("/e/pub-job-1")
     assert r.status_code == 200
