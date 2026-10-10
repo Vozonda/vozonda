@@ -30,10 +30,20 @@ const proxyOptions = {
     })
   }
 }
-const proxy = Object.fromEntries(API_PATHS.map((p) => [p, proxyOptions]))
+const proxy: Record<string, typeof proxyOptions> = Object.fromEntries(API_PATHS.map((p) => [p, proxyOptions]))
+// per-show feeds are /{show}/{name}/feed.xml (podcast apps fetch them through the preview too)
+proxy['^/[^/]+/[^/]+/feed\\.xml(\\?.*)?$'] = proxyOptions  // Vite matches the url with its query
+
+// Vite answers only host names it knows; the address other devices use (VOZONDA_PUBLIC_URL in .env,
+// e.g. the machine's Tailscale name) is one of them. VOZONDA_ALLOWED_HOSTS adds more, comma-separated.
+const allowedHosts = [process.env.VOZONDA_PUBLIC_URL, ...(process.env.VOZONDA_ALLOWED_HOSTS || '').split(',')]
+  .map((v) => (v || '').trim())
+  .filter(Boolean)
+  .map((v) => { try { return new URL(v.includes('://') ? v : `http://${v}`).hostname } catch { return '' } })
+  .filter(Boolean)
 
 export default defineConfig({
   plugins: [svelte()],
-  server: { proxy },
-  preview: { proxy }
+  server: { proxy, allowedHosts },
+  preview: { proxy, allowedHosts }
 })

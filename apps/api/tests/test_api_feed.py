@@ -155,3 +155,20 @@ def test_feed_v4v_env_node_address_override(tmp_path, monkeypatch):
     # Check /feed.xml renders node address from env
     txt = client.get("/feed.xml").text
     assert 'address="node@sparki.grid" split="10"' in txt
+
+
+def test_feed_links_use_public_url_when_set(tmp_path, monkeypatch):
+    """Behind a proxy that rewrites the host (the Vite preview) the request address is 127.0.0.1; podcast
+    apps on another device need the public one."""
+    import vozonda_api.jobs as jobs_mod
+    import vozonda_api.main as main_mod
+
+    monkeypatch.setattr(jobs_mod, "DB_PATH", tmp_path / "jobs.db")
+    monkeypatch.setenv("VOZONDA_PUBLIC_URL", "http://vozonda.example.org:4173/")
+    store = jobs_mod.JobStore()
+    store.create("ep-pub", "https://example.com/a")
+    store.update("ep-pub", title="Alpha", duration_ms=1000)
+    store.finish("ep-pub")
+    txt = TestClient(main_mod.app).get("/feed.xml").text
+    assert 'enclosure url="http://vozonda.example.org:4173/audio/ep-pub.mp3"' in txt
+    assert "testserver" not in txt
