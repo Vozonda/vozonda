@@ -300,7 +300,10 @@ proves it.
 <a id="production-deployment"></a>
 ## Non-Goals
 
-- No telemetry, analytics, or tracking.
+- No telemetry, analytics, or tracking. The one outbound call Vozonda makes on its own is the update check:
+  while the web UI is open it asks GitHub for the latest release at most every six hours (GitHub sees the
+  install's IP address, nothing else is sent); "stop checking" in the notice, or the setting
+  `update.check = 0`, turns it off.
 - No mandatory third-party accounts or paywalled services.
 - Not a generic DAW or audio editor. Vozonda creates structured dialogue episodes.
 

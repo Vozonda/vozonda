@@ -13,6 +13,12 @@ import socket
 import tempfile
 
 _TMP = tempfile.mkdtemp(prefix="vozonda-tests-")
+# Starlette's TestClient sends "Host: testserver"; it is a local client here (access.py counts any
+# other host name as remote).
+os.environ.setdefault("VOZONDA_LOCAL_HOSTNAMES", "testserver")
+# The media dir exists in every real install; a test that writes into it must not depend on another test
+# having created it first (test_mixed_sources failed whenever xdist put it on a fresh worker).
+os.makedirs(os.path.join(_TMP, "media"), exist_ok=True)
 
 # ---------------------------------------------------------------------------
 # Path isolation: every production path must resolve inside the temp dir.

@@ -25,7 +25,7 @@ server {
 
     # Proxy API endpoints to vozonda-api (every path the UI, podcast apps and share links use; per-show
     # feeds are /{creator}/{show}/feed.xml)
-    location ~ ^/((auth|providers|jobs|audio|settings|meta|watchlist|doctor|health|e|source|sources|tts|shows|styles|plugins|music|storage|clips|vtt|srt|img|share|llm|distribution|billing)(/|$)|feed\.xml$|og-default\.png$|llms\.txt$|[^/]+/[^/]+/feed\.xml$) {
+    location ~ ^/((auth|providers|jobs|audio|settings|meta|watchlist|doctor|health|e|source|sources|tts|shows|styles|plugins|music|storage|clips|vtt|srt|img|share|llm|distribution|billing|update-check)(/|$)|feed\.xml$|og-default\.png$|llms\.txt$|[^/]+/[^/]+/feed\.xml$) {
         proxy_pass ${VOZONDA_API_URL};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;

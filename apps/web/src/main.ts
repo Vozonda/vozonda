@@ -4,6 +4,7 @@ import '@fontsource-variable/jetbrains-mono'
 import './lib/styles/tokens.css'
 import App from './App.svelte'
 import LoginGate from './lib/components/LoginGate.svelte'
+import UpdateBanner from './lib/components/UpdateBanner.svelte'
 
 // A tab opened before a deploy still runs the old bundle; its lazy screens
 // (faq, about, agents, ...) point at chunks the new build deleted, so they
@@ -36,6 +37,10 @@ const app = mount(App, {
 const gateRoot = document.createElement('div')
 document.body.append(gateRoot)
 mount(LoginGate, { target: gateRoot })
+
+const updateRoot = document.createElement('div')
+document.body.append(updateRoot)
+mount(UpdateBanner, { target: updateRoot })
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

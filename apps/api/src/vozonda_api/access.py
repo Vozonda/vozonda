@@ -6,9 +6,11 @@ nobody else can reach it. A request counts as *remote* when
 - the install says it is exposed (VOZONDA_HOST is not a loopback address and the port is not published on
   loopback only), or
 - it came through a reverse proxy: it carries X-Forwarded-For or Forwarded. A proxy in front of the web UI
-  (Caddy, nginx, Tailscale serve, a tunnel) adds them; the bundled web container passes on only what it
-  received, so a local browser sends none. A client cannot make itself local by sending fewer headers than its
-  proxy adds.
+  (Caddy, nginx, Tailscale serve, a tunnel) adds them; the bundled web container and the Vite preview pass on
+  only what they received, plus the client address when it is not loopback, so a local browser sends none.
+  A client cannot make itself local by sending fewer headers than its proxy adds; or
+- it was addressed by a name other than a loopback one (Host header): a proxy that keeps the original host,
+  or the LAN and VPN address of the machine. VOZONDA_LOCAL_HOSTNAMES adds names that count as local.
 
 Remote requests are denied by default (GHSA-crq5-73gf-fv2h). They pass when
 
@@ -69,11 +71,22 @@ def install_exposed() -> bool:
     return billing or exposed
 
 
+def _host_name(host: str) -> str:
+    host = host.strip().lower()
+    if host.startswith("["):  # [::1]:8787
+        return host[1:host.find("]")] if "]" in host else host
+    return host.rsplit(":", 1)[0] if host.count(":") == 1 else host
+
+
 def is_remote(request: Request) -> bool:
     if install_exposed():
         return True
     h = request.headers
-    return bool(h.get("x-forwarded-for", "").strip() or h.get("forwarded", "").strip())
+    if h.get("x-forwarded-for", "").strip() or h.get("forwarded", "").strip():
+        return True
+    host = _host_name(h.get("host", ""))
+    extra = {n.strip().lower() for n in env("LOCAL_HOSTNAMES", "").split(",") if n.strip()}
+    return bool(host) and host not in _LOOPBACK_HOSTS and host not in extra
 
 
 def token() -> str:

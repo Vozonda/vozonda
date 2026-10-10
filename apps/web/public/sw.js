@@ -30,7 +30,7 @@ self.addEventListener('message', (event) => {
 // "not signed in" after a sign-in (GHSA-crq5-73gf-fv2h), and other JSON could go stale the same way.
 const API_PREFIXES = ['/jobs', '/providers', '/meta', '/settings', '/watchlist', '/feed.xml', '/doctor',
   '/health', '/e/', '/auth', '/shows', '/sources', '/source/', '/styles', '/plugins', '/storage', '/clips',
-  '/vtt/', '/srt/', '/llm', '/distribution', '/billing', '/tts']
+  '/vtt/', '/srt/', '/llm', '/distribution', '/billing', '/tts', '/update-check']
 
 function isApiRequest(url) {
   return API_PREFIXES.some((p) => url.pathname.startsWith(p)) || url.pathname.endsWith('/feed.xml')

@@ -201,6 +201,15 @@ class SessionIn(BaseModel):
     token: str
 
 
+@app.get("/update-check")
+async def update_check() -> dict:
+    """Whether a newer release exists (checked against GitHub at most every six hours; setting
+    update.check = "0" turns it off) and the command that installs it."""
+    from . import updates
+
+    return await updates.check()
+
+
 @app.get("/auth/session")
 async def session_status(request: Request) -> dict:
     """Whether this browser is signed in, and whether it has to be (the web UI asks on load)."""

@@ -144,3 +144,19 @@ def test_new_ids_are_not_guessable():
     rid = _readable_id("https://example.com/some-article")
     assert rid.startswith("some-article-")
     assert len(rid.rsplit("-", 1)[1]) == 12
+
+
+def test_lan_or_vpn_host_name_counts_as_remote(app):
+    # a proxy that keeps the original host, or the machine's LAN/VPN name, without X-Forwarded-For
+    assert app.get("/jobs", headers={"Host": "vozonda.example.org"}).status_code == 503
+    assert app.get("/jobs", headers={"Host": "203.0.113.20:4173"}).status_code == 503
+
+
+def test_loopback_host_names_stay_local(app):
+    for host in ("127.0.0.1:8787", "localhost", "[::1]:8787", "LOCALHOST:4173"):
+        assert app.get("/jobs", headers={"Host": host}).status_code == 200, host
+
+
+def test_extra_local_host_names(app, monkeypatch):
+    monkeypatch.setenv("VOZONDA_LOCAL_HOSTNAMES", "testserver, vozonda.lan")
+    assert app.get("/jobs", headers={"Host": "vozonda.lan"}).status_code == 200
