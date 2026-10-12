@@ -9,8 +9,10 @@ the install itself would need control over Docker, which means root on the host.
 """
 from __future__ import annotations
 
+import os
 import re
 import time
+from pathlib import Path
 
 import httpx
 
@@ -20,6 +22,33 @@ from .version import BASE_VERSION
 RELEASES_API = "https://api.github.com/repos/Vozonda/vozonda/releases/latest"
 TTL = 6 * 3600
 _cache: dict = {"at": 0.0, "release": None}
+
+
+def _is_container() -> bool:
+    return (
+        Path("/.dockerenv").exists()
+        or Path("/run/.containerenv").exists()
+        or os.environ.get("VOZONDA_CONTAINER") == "1"
+    )
+
+
+def update_command() -> str:
+    """Return the recommended update command depending on container vs native runtime."""
+    env_override = os.environ.get("VOZONDA_UPDATE_COMMAND")
+    if env_override:
+        return env_override.strip()
+    try:
+        setting_override = get_setting("update.command")
+        if setting_override:
+            return str(setting_override).strip()
+    except KeyError:
+        pass
+    if _is_container():
+        return "git pull && docker compose up -d --build"
+    root = Path(__file__).resolve().parents[4]
+    if (root / "scripts" / "update.sh").exists():
+        return "git pull && ./scripts/update.sh"
+    return "git pull && ./scripts/restart-api.sh"
 
 
 def _parse(v: str) -> tuple[int, ...]:
@@ -63,5 +92,5 @@ async def check() -> dict:
         out.update(available=True, latest=latest, url=rel["url"],
                    # the release notes come from the CHANGELOG section, which has "### Security" for fixes
                    security="### Security" in rel["body"],
-                   command="git pull && docker compose up -d --build")
+                   command=update_command())
     return out

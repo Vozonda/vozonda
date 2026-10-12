@@ -77,6 +77,8 @@ SETTING_KEYS = {
     "disclosure.ai_label",
     # "0" turns off the check for new releases (updates.py)
     "update.check",
+    # optional custom command to show in the update banner
+    "update.command",
     # Nostr publishing (VOZONDA-NOSTR)
     "nostr.publish_default",
     "nostr.relays",
