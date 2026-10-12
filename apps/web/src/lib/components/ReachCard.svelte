@@ -10,9 +10,9 @@
 <script lang="ts">
   // "Who can listen?" for one show (#56). Presentational: it derives the level from the show's switches
   // and asks the settings screen for a target; the screen sets the switches (and confirms Nostr).
-  //   only in vozonda : no feed, no nostr
-  //   my podcast app  : a private feed (its link carries the feed key)
-  //   public          : rss and/or nostr, at least one; rss needs an internet address, nostr no server
+  //   internal only    : no feed, no nostr
+  //   private link     : a private feed (its link carries the feed key)
+  //   public directory : rss and/or nostr, at least one; rss needs an internet address, nostr no server
   import { tick } from 'svelte'
   import type { DistributionMeta } from '../api'
 

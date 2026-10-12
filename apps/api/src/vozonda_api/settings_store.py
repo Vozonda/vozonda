@@ -140,6 +140,9 @@ _SHOW_RSS_KEY = re.compile(r"^show\.(?:(?:s)?[0-9]+|default)\.rss$")
 # the per-show public switch; same rule as show.<n>.rss
 _SHOW_PUBLIC_KEY = re.compile(r"^show\.(?:(?:s)?[0-9]+|default)\.public$")
 
+# the per-show text properties (name, author, category, description)
+_SHOW_PROP_KEY = re.compile(r"^show\.(?:(?:s)?[0-9]+|default)\.(?:name|author|category|description)$")
+
 
 def _normalize_show_key(key: str) -> str:
     """Normalize show.N.* keys by removing optional 's' prefix from the number.
@@ -171,7 +174,14 @@ def _fetch_row(key: str):
 
 def get_setting(key: str) -> Any | None:
     norm_key = _normalize_show_key(key)
-    if norm_key not in SETTING_KEYS and not norm_key.startswith("tts.wpm.") and not _SHOW_NOSTR_KEY.match(norm_key) and not _SHOW_RSS_KEY.match(norm_key) and not _SHOW_PUBLIC_KEY.match(norm_key):
+    if (
+        norm_key not in SETTING_KEYS
+        and not norm_key.startswith("tts.wpm.")
+        and not _SHOW_NOSTR_KEY.match(norm_key)
+        and not _SHOW_RSS_KEY.match(norm_key)
+        and not _SHOW_PUBLIC_KEY.match(norm_key)
+        and not _SHOW_PROP_KEY.match(norm_key)
+    ):
         raise KeyError(f"unknown setting: {key}")
     if norm_key == "feed.app.address":
         env_addr = get_node_v4v_address()
@@ -256,7 +266,14 @@ def set_setting(key: str, value: str) -> str:
     # tts.wpm.<engine> is written by the pipeline's length calibration; until
     # 2026-09-24 only get_setting allowed the prefix, every write raised, the
     # pipeline swallowed it and all length planning ran on the 160 wpm default
-    if norm_key not in SETTING_KEYS and not norm_key.startswith("tts.wpm.") and not _SHOW_NOSTR_KEY.match(norm_key) and not _SHOW_RSS_KEY.match(norm_key) and not _SHOW_PUBLIC_KEY.match(norm_key):
+    if (
+        norm_key not in SETTING_KEYS
+        and not norm_key.startswith("tts.wpm.")
+        and not _SHOW_NOSTR_KEY.match(norm_key)
+        and not _SHOW_RSS_KEY.match(norm_key)
+        and not _SHOW_PUBLIC_KEY.match(norm_key)
+        and not _SHOW_PROP_KEY.match(norm_key)
+    ):
         raise KeyError(f"unknown setting: {key}")
     if norm_key == "feed.app.address" and is_node_v4v_address_locked():
         return get_node_v4v_address() or ""
@@ -490,6 +507,10 @@ def _validate(key: str, value: str) -> str:
         if val not in {"0", "1"}:
             raise ValueError(f"{key} must be '0' or '1', got {value!r}")
         return val
+    if _SHOW_PROP_KEY.match(key):
+        prop = key.rsplit(".", 1)[-1]
+        max_len = {"name": 80, "author": 80, "category": 60, "description": 4000}.get(prop, 4000)
+        return value.strip()[:max_len]
     return value
 
 
