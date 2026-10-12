@@ -25,10 +25,21 @@ def _release(monkeypatch, tag, body=""):
 def test_newer_security_release_is_offered(monkeypatch):
     import vozonda_api.updates as up
 
+    monkeypatch.setattr(up, "_is_container", lambda: True)
     _release(monkeypatch, "v0.7.2", "## 0.7.2\n\n### Security\n\n- remote access needs the token")
     out = asyncio.run(up.check())
     assert out["available"] and out["latest"] == "0.7.2" and out["security"] is True
     assert out["command"] == "git pull && docker compose up -d --build"
+
+
+def test_native_update_command_is_offered(monkeypatch):
+    import vozonda_api.updates as up
+
+    monkeypatch.setattr(up, "_is_container", lambda: False)
+    _release(monkeypatch, "v0.7.2")
+    out = asyncio.run(up.check())
+    assert out["available"] and out["latest"] == "0.7.2"
+    assert "update.sh" in out["command"] or "restart-api.sh" in out["command"]
 
 
 def test_same_or_older_release_is_not_offered(monkeypatch):
