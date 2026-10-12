@@ -3936,7 +3936,7 @@ wheels = [
 ]
 
 [[package]]
-name = "vozonda-api"
+name = "vozonda"
 version = "0.7.3"
 source = { editable = "." }
 dependencies = [
@@ -4016,10 +4016,10 @@ requires-dist = [
     { name = "soundfile", marker = "extra == 'tts-qwen'", specifier = ">=0.12.0" },
     { name = "torch", marker = "extra == 'tts-qwen'", specifier = ">=2.2.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },
-    { name = "vozonda-api", extras = ["stt"], marker = "extra == 'tts'" },
-    { name = "vozonda-api", extras = ["tts-kokoro"], marker = "extra == 'tts'" },
-    { name = "vozonda-api", extras = ["tts-piper"], marker = "extra == 'tts'" },
-    { name = "vozonda-api", extras = ["tts-qwen"], marker = "extra == 'tts'" },
+    { name = "vozonda", extras = ["stt"], marker = "extra == 'tts'" },
+    { name = "vozonda", extras = ["tts-kokoro"], marker = "extra == 'tts'" },
+    { name = "vozonda", extras = ["tts-piper"], marker = "extra == 'tts'" },
+    { name = "vozonda", extras = ["tts-qwen"], marker = "extra == 'tts'" },
 ]
 provides-extras = ["tts-qwen", "tts-piper", "tts-kokoro", "stt", "tts", "mcp"]
 
