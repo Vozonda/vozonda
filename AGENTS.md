@@ -103,6 +103,20 @@ A pre-push hook runs `verify.sh`; never bypass it (`--no-verify`) without saying
 message. Commit style `<scope>: <verb> <object>` (e.g. `web: add waveform seek`), pathspec-scoped
 (`git commit -- <paths>`), never `git add -A`. No Co-Authored-By trailers for GitHub-bound work.
 
+## Releases and Versioning Contract
+
+Never edit version numbers in isolation. Always use `scripts/bump_version.py`:
+
+```bash
+python3 scripts/bump_version.py <version|patch|minor|major> [--sync-website]
+```
+
+When cutting a release or publishing a version:
+1. **Four manifests in lockstep:** `apps/api/pyproject.toml`, `apps/api/src/vozonda_api/version.py`, `apps/web/package.json`, and `packages/npm/package.json` must always carry the exact same version string.
+2. **Changelog promotion:** `CHANGELOG.md` must promote `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD` with categorized items (`Added`, `Changed`, `Fixed`, `Removed`, `Security`).
+3. **Website synchronization:** Running with `--sync-website` rebuilds `vozonda-website/changelog/` from `CHANGELOG.md` via `build_site.py` and deploys it, keeping `https://vozonda.com/changelog/` in lockstep with the app releases.
+4. **Distribution triggers:** Git tags `v*.*.*` automatically trigger GitHub Releases, GHCR Docker image builds (`ghcr.io/vozonda/vozonda`), and PyPI distribution (`publish-pypi.yml`).
+
 ## Cloud agents and GitHub
 
 GitHub `Vozonda/vozonda` is the main repo. Cloud agents and routines follow these rules on top of
