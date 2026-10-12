@@ -102,4 +102,4 @@ The feed URL has a copy button (with the key for a private feed); turning Nostr 
 confirmation first, and the show's key can be backed up once (nsec). Below the cards: value for value, the AI
 disclosure label, the public address status with links to Apple Podcasts Connect, Spotify for Creators and
 Podcast Index, the defaults for new shows, and the relay and Blossom server lists. The plain "who can listen?"
-cards, the address field and the QR code follow in the next release (#56).
+cards, the address field with scope detection and the QR code for phones landed in v0.7.3 (#56, #62).

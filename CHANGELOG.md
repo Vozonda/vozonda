@@ -7,15 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [0.7.3] - 2026-10-12
 
-- private or public is now set per show (`show.<n>.public`, `show.default.public`), no longer one switch for every feed; a new show starts private; shows from before follow the old `feed.public`. The master feed `/feed.xml` without the key lists only public shows (404 when there is none); with the key it lists every show that has a feed. A private episode's media links keep the key in every feed opened with it
+Reach settings: per-show "Who can listen?" card, private feed links with feed key and QR code, address detection (VPN, LAN, internet), and filtered master feed.
 
 ### Added
 
+- settings: "Who can listen?" card per show (replaces the raw four-way switches with a plain-language choice: only in Vozonda, private podcast feed with feed key and QR code for phones, or public with RSS and/or Nostr; clear scope feedback for VPN, LAN or internet)
 - web: `qrcode-generator` (MIT) as a dependency and `lib/qr.ts` for QR codes rendered in the browser (the private feed link to a phone; nothing leaves the device)
 - the address other devices use can be set in the settings (`address.public`, wins over `VOZONDA_PUBLIC_URL`; only a plain http(s) address); `GET /distribution` reports it with its scope (this computer, private network or VPN, internet) and whether it answers, plus `public` per show
 - `PUT /shows/{slug}/public` and `POST /feed/key/rotate` (a new feed key; old links stop working)
+
+### Changed
+
+- private or public is now set per show (`show.<n>.public`, `show.default.public`), no longer one switch for every feed; a new show starts private; shows from before follow the old `feed.public`. The master feed `/feed.xml` without the key lists only public shows (404 when there is none); with the key it lists every show that has a feed. A private episode's media links keep the key in every feed opened with it
 
 ### Fixed
 
