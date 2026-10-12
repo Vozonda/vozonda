@@ -41,8 +41,9 @@ cp .env.example .env
 docker compose up -d
 ```
 
-The first build downloads PyTorch and takes several minutes (around 3 to 8 minutes
-depending on your network); subsequent starts take only seconds.
+Docker Compose pulls the prebuilt images from GitHub Container Registry
+(`ghcr.io/vozonda/vozonda-api` and `ghcr.io/vozonda/vozonda-web`), so launch takes only seconds.
+If you prefer building locally from source, use `docker compose up -d --build`.
 
 > **Port note:** The default ports are 8787 (API) and 4173 (web). If either port
 > is already in use on your machine, edit `.env` before running `docker compose up -d`
