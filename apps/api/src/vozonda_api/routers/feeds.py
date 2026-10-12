@@ -464,8 +464,9 @@ def _render_feed(request: Request, rows: list, *, self_path: str, key: str | Non
         else ""
     )
     title = htmllib.escape(show_title or _setting_str("show.name") or "Vozonda", quote=True)
+    show_desc_val = (_setting_str(f"show.{show_num}.description") if show_num else "") or _setting_str("show.description")
     show_desc = htmllib.escape(
-        _setting_str("show.description") or "Vozonda: Sovereign audio overviews. Your voices, your feeds. Open source & private.",
+        show_desc_val or "Vozonda: Sovereign audio overviews. Your voices, your feeds. Open source & private.",
         quote=True,
     )
     show_author = htmllib.escape(_setting_str("show.author") or creator_addr or "Vozonda", quote=True)

@@ -60,6 +60,8 @@
     check: 'M5 13l4 4L19 7',
     cross: 'M18 6L6 18M6 6l12 12',
     close: 'M18 6L6 18M6 6l12 12',
+    'chevron-down': 'm6 9 6 6 6-6',
+    'chevron-right': 'm9 18 6-6-6-6',
     highlighter: 'm9 11-6 6v3h3l6-6m-3-3 7-7a2 2 0 0 1 3 3l-7 7m-3-3 3 3',
     moon: 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z',
     trash: 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6',

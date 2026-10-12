@@ -80,7 +80,7 @@
     if (level === 'vozonda') return { text: 'episodes stay in the web ui; no feed, nothing published.', warn: false }
     if (level === 'podcast') {
       if (address.scope === 'this-computer')
-        return { text: "your phone cannot reach this address; set it under 'address for other devices'.", warn: true }
+        return { text: "your phone cannot reach this address; set it under 'base url'.", warn: true }
       if (address.scope === 'private-network')
         return { text: `your own devices reach the feed at ${host}; anyone with the link (it carries a key) can listen.`, warn: false }
       return { text: 'anyone with the link can listen: it carries the key, so keep it on your own devices.', warn: false }
@@ -96,15 +96,12 @@
   <p class="lab mono reach-q" id={`reach-q-${show.slug}`}>who can listen to {show.name}?</p>
   <div class="seg reach-seg" role="radiogroup" aria-labelledby={`reach-q-${show.slug}`}>
     <button type="button" role="radio" aria-checked={level === 'vozonda'} class:sel={level === 'vozonda'}
-      disabled={busy} onclick={() => choose('vozonda')}>only in vozonda</button>
+      disabled={busy} onclick={() => choose('vozonda')}>internal only</button>
     <button type="button" role="radio" aria-checked={level === 'podcast'} class:sel={level === 'podcast'}
-      disabled={busy} onclick={() => choose('podcast')}>my podcast app</button>
+      disabled={busy} onclick={() => choose('podcast')}>private link</button>
     <button type="button" role="radio" aria-checked={level === 'public' || asking} class:sel={level === 'public'}
-      class:pending={asking} disabled={busy} onclick={() => choose('public')}>public</button>
+      class:pending={asking} disabled={busy} onclick={() => choose('public')}>public directory</button>
   </div>
-  {#if level === 'podcast'}
-    <p class="help">private feed: the link carries a key.</p>
-  {/if}
 
   {#if asking}
     <div class="confirm-box" role="dialog" aria-modal="false" aria-labelledby={`pub-h-${show.slug}`} tabindex="-1"
@@ -177,12 +174,23 @@
     background: transparent; border: none; padding: 0; min-height: 28px; cursor: pointer; color: var(--ink-soft);
     font-family: var(--font-mono); font-size: var(--ui-size); text-decoration: underline; text-decoration-color: var(--line);
   }
-  .reach-card { display: grid; gap: var(--space-2); margin-top: var(--space-2); }
+  .reach-card {
+    display: grid;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid color-mix(in srgb, var(--line) 30%, transparent);
+  }
   .reach-q { margin: 0; }
-  .reach-channels { display: grid; gap: var(--space-1); }
+  .reach-channels { display: grid; gap: var(--space-2); }
   .reach-check { display: flex; gap: var(--space-2); align-items: baseline; font-size: var(--ui-size); }
-  .reach-status { margin: 0; font-size: var(--ui-size); color: var(--ink-soft); }
+  .reach-status {
+    margin: var(--space-1) 0 0;
+    font-size: var(--ui-size);
+    color: var(--ink-soft);
+    line-height: 1.45;
+  }
   .reach-status.warn { color: var(--danger); }
-  .reach-checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: var(--ui-size); color: var(--ink-soft); }
+  .reach-checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: var(--ui-size); color: var(--ink-soft); }
   .reach-checklist li.ok { color: var(--green); }
 </style>

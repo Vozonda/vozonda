@@ -18,7 +18,7 @@ def _apply_reach() -> str:
 
 def test_three_levels_and_the_question():
     assert "who can listen to {show.name}?" in CARD
-    for label in (">only in vozonda<", ">my podcast app<", ">public<"):
+    for label in (">internal only<", ">private link<", ">public directory<"):
         assert label in CARD, label
 
 

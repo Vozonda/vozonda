@@ -59,6 +59,26 @@ async def get_distribution(request: Request) -> dict:
 
     shows = []
     all_settings_dict = all_settings()
+    default_name = all_settings_dict.get("show.name") or ""
+    if default_name:
+        # the unnumbered default show: its episodes are in the master feed
+        default_rss = resolve_show_rss("default")
+        default_pub = "1" if _feed_is_public("default") else "0"
+        feed_url = f"{base}/feed.xml" if default_rss == "1" else None
+        if feed_url and default_pub != "1":
+            feed_url += f"?key={quote(get_private_feed_key(), safe='')}"
+        shows.append({
+            "slug": "default",
+            "name": default_name,
+            "author": all_settings_dict.get("show.author") or "",
+            "category": all_settings_dict.get("show.category") or "",
+            "description": all_settings_dict.get("show.description") or "",
+            "rss": default_rss,
+            "public": default_pub,
+            "nostr": "0",
+            "feed_url": feed_url,
+            "fixed": True,
+        })
     for i in show_numbers():
         name = all_settings_dict[f"show.{i}.name"]
         slug = f"s{i}"
@@ -74,21 +94,12 @@ async def get_distribution(request: Request) -> dict:
             "name": name,
             "author": all_settings_dict.get(f"show.{i}.author") or "",
             "category": all_settings_dict.get(f"show.{i}.category") or "",
+            "description": all_settings_dict.get(f"show.{i}.description") or "",
             "rss": rss,
             "public": pub,
             "nostr": resolve_show_nostr(str(i)),
             "feed_url": feed_url,
         })
-    default_name = all_settings_dict.get("show.name") or ""
-    if default_name:
-        # the unnumbered default show: its episodes are in the master feed
-        default_rss = resolve_show_rss("default")
-        default_pub = "1" if _feed_is_public("default") else "0"
-        feed_url = f"{base}/feed.xml" if default_rss == "1" else None
-        if feed_url and default_pub != "1":
-            feed_url += f"?key={quote(get_private_feed_key(), safe='')}"
-        shows.append({"slug": "default", "name": default_name, "rss": default_rss, "public": default_pub, "nostr": "0",
-                      "feed_url": feed_url, "fixed": True})
 
     # Directory help (static links)
     directory_help = {

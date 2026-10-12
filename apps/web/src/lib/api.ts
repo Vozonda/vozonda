@@ -1010,7 +1010,7 @@ export interface DistributionMeta {
   reachable: boolean | null
   // the feed needs its key (the default); feed_url then carries it
   feed_private?: boolean
-  shows: { slug: string; name: string; author?: string; category?: string; rss: string; nostr: string; feed_url: string | null; fixed?: boolean; public?: string }[]
+  shows: { slug: string; name: string; author?: string; category?: string; description?: string; rss: string; nostr: string; feed_url: string | null; fixed?: boolean; public?: string }[]
   directory_help: { apple_podcasts_connect: string; spotify_for_creators: string; podcast_index: string }
 }
 
@@ -1061,7 +1061,7 @@ export async function rotateFeedKey(): Promise<string> {
   return data.key
 }
 
-export async function updateShow(slug: string, show: { name: string; author: string; category: string }): Promise<ShowItem> {
+export async function updateShow(slug: string, show: { name: string; author: string; category: string; description?: string }): Promise<ShowItem> {
   const res = await fetch(`${API_BASE}/shows/${encodeURIComponent(slug)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -1074,7 +1074,7 @@ export async function updateShow(slug: string, show: { name: string; author: str
   return (await res.json()) as ShowItem
 }
 
-export async function createShow(show: { name: string; author?: string; category?: string }): Promise<ShowItem> {
+export async function createShow(show: { name: string; author?: string; category?: string; description?: string }): Promise<ShowItem> {
   const res = await fetch(`${API_BASE}/shows`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
