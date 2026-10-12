@@ -1,7 +1,7 @@
 ---
 type: tactical-backlog
 scope: vozonda
-last_updated: 2026-10-04
+last_updated: 2026-10-12
 ---
 
 # TODO - vozonda (open items only)
@@ -14,6 +14,10 @@ Feature work is tracked natively as Gitea issues; this file tracks the tactical 
 - [x] #240 / #241 Kokoro-82M Expressive Local TTS Provider Seam & UI Selector (DUE-018 - landed 2026-09-01 via 44e91c8)
 - [x] #236 / #237 Multi-Engine LLM Provider Architecture & UI Selector (landed 2026-09-01 via f9bb513, 76645b8)
 - [x] #231 / #232 Podcast Show Entity, Hierarchical RSS Feeds & UI Settings (landed 2026-09-01 via 943e803, 311cb05)
+- [x] #56 Plain-language reach settings per show, QR codes, address scope, and filtered master feed (v0.7.3 landed 2026-10-12 via #59, #60, #61, #62, #63)
+- [x] #65 Section 04 UX polish, per-show descriptions, and settings refinements (v0.7.4 landed 2026-10-12)
+- [x] PyPI packaging (`vozonda` 0.7.4), npm wrapper (`vozonda` 0.1.1), public GHCR image (`ghcr.io/vozonda/vozonda:latest`) (landed 2026-10-12)
+- [x] Unified version bump & changelog sync automation `scripts/bump_version.py` (landed 2026-10-12)
 - [x] #229 Nostr Profile Screen with Avatar, Name & Activity (landed 2026-09-01 via e02c4be)
 - [x] #182 Standalone Public Share View (/e/{id}) with Rich OpenGraph Tags (landed)
 - [x] #184 Social Highlight Audio Clips Slicing & Social Teasers (DUE-020 - landed)
