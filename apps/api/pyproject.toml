@@ -1,5 +1,5 @@
 [project]
-name = "vozonda-api"
+name = "vozonda"
 version = "0.7.3"
 description = "Vozonda orchestrator: url to two-voice podcast dialogue"
 requires-python = ">=3.11"
@@ -35,7 +35,7 @@ stt = [
     # faster-whisper 1.2.1 calls av.open(metadata_errors=...), which PyAV 19 removed
     "av>=11,<19",
 ]
-tts = ["vozonda-api[tts-qwen]", "vozonda-api[tts-piper]", "vozonda-api[tts-kokoro]", "vozonda-api[stt]"]
+tts = ["vozonda[tts-qwen]", "vozonda[tts-piper]", "vozonda[tts-kokoro]", "vozonda[stt]"]
 mcp = [
     "mcp>=1.9",
 ]
@@ -68,6 +68,7 @@ filterwarnings = [
 ]
 
 [project.scripts]
+vozonda = "vozonda_api.main:serve"
 vozonda-api = "vozonda_api.main:serve"
 
 [tool.ruff]

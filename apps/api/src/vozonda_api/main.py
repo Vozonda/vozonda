@@ -1910,6 +1910,7 @@ class ShowIn(BaseModel):
     name: str = ""
     author: str = ""
     category: str = ""
+    description: str = ""
     slug: str | None = None  # auto-generated if empty
 
 
@@ -1918,6 +1919,7 @@ class ShowOut(BaseModel):
     name: str
     author: str
     category: str
+    description: str = ""
 
 
 def _list_shows() -> list[ShowOut]:
@@ -1925,7 +1927,7 @@ def _list_shows() -> list[ShowOut]:
     from .settings_store import SETTING_KEYS, all_settings
 
     # Check if the dynamic show keys are registered; register them if not
-    dynamic_keys = {"show.1.name", "show.1.author", "show.1.category"}
+    dynamic_keys = {"show.1.name", "show.1.author", "show.1.category", "show.1.description"}
     if not dynamic_keys.issubset(SETTING_KEYS):
         # dynamic show keys are added on-demand; we read from all_settings instead
         pass
@@ -1942,6 +1944,7 @@ def _list_shows() -> list[ShowOut]:
             name=all_settings_dict[f"show.{i}.name"] or "",
             author=all_settings_dict.get(f"show.{i}.author", "") or "",
             category=all_settings_dict.get(f"show.{i}.category", "") or "",
+            description=all_settings_dict.get(f"show.{i}.description", "") or "",
         ))
 
     # Add the default/current show if it has a name
@@ -1952,6 +1955,7 @@ def _list_shows() -> list[ShowOut]:
             name=default_name,
             author=all_settings_dict.get("show.author", "") or "",
             category=all_settings_dict.get("show.category", "") or "",
+            description=all_settings_dict.get("show.description", "") or "",
         ))
 
     # De-duplicate: keep last occurrence (latest is the "real" default)
@@ -2009,6 +2013,7 @@ async def create_show(body: ShowIn) -> dict:
     name = (body.name or "").strip()[:80]
     author = (body.author or "").strip()[:80]
     category = (body.category or "").strip()[:60]
+    description = (body.description or "").strip()[:4000]
 
     if not name:
         raise HTTPException(422, "show name is required")
@@ -2033,6 +2038,7 @@ async def create_show(body: ShowIn) -> dict:
         f"show.{idx}.name": name,
         f"show.{idx}.author": author,
         f"show.{idx}.category": category,
+        f"show.{idx}.description": description,
     }
     # Only a NEW show takes the preset nostr.publish_default; saving an existing show
     # keeps its own switch (review F-3: re-saving used to overwrite it with the preset)
@@ -2054,7 +2060,7 @@ async def create_show(body: ShowIn) -> dict:
     conn.close()
 
     # Return slug in s{N} format to match list_shows and feed URLs
-    return {"slug": f"s{idx}", "name": name, "author": author, "category": category}
+    return {"slug": f"s{idx}", "name": name, "author": author, "category": category, "description": description}
 
 
 @app.put("/shows/{slug}", dependencies=[Depends(require_write_auth)])
@@ -2063,6 +2069,7 @@ async def update_show(slug: str, body: ShowIn) -> dict:
     name = (body.name or "").strip()[:80]
     author = (body.author or "").strip()[:80]
     category = (body.category or "").strip()[:60]
+    description = (body.description or "").strip()[:4000]
 
     if not name:
         raise HTTPException(422, "show name is required")
@@ -2082,7 +2089,12 @@ async def update_show(slug: str, body: ShowIn) -> dict:
 
     # Update directly in DB
     conn = __import__("vozonda_api.settings_store", fromlist=["_conn"])._conn()
-    for k, v in [(f"show.{idx}.name", name), (f"show.{idx}.author", author), (f"show.{idx}.category", category)]:
+    for k, v in [
+        (f"show.{idx}.name", name),
+        (f"show.{idx}.author", author),
+        (f"show.{idx}.category", category),
+        (f"show.{idx}.description", description),
+    ]:
         conn.execute(
             "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             (k, v),
@@ -2090,7 +2102,7 @@ async def update_show(slug: str, body: ShowIn) -> dict:
     conn.commit()
     conn.close()
 
-    return {"slug": slug, "name": name, "author": author, "category": category}
+    return {"slug": slug, "name": name, "author": author, "category": category, "description": description}
 
 
 @app.delete("/shows/{slug}", dependencies=[Depends(require_write_auth)])

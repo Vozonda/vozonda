@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- settings: per-show `description` field for custom shows in the UI and API/feeds (previously only available for the default show)
+- settings: default show is explicitly badged as `main show (default)` and pinned to the top of the shows list
+
+### Changed
+
+- settings: "Who can listen?" card terminology aligned to industry standards: `internal only`, `private link`, and `public directory`
+- settings: section 04 (shows & distribution) layout streamlined: Base URL with scope status moved to the top, external app directory links collapsed into an accordion, and feed defaults and AI disclosure consolidated into a single card
+
 ## [0.7.3] - 2026-10-12
 
 Reach settings: per-show "Who can listen?" card, private feed links with feed key and QR code, address detection (VPN, LAN, internet), and filtered master feed.

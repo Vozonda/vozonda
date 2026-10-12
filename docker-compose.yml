@@ -1,5 +1,6 @@
 services:
   api:
+    image: ghcr.io/vozonda/vozonda-api:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -59,6 +60,7 @@ services:
       start_period: 10s
 
   web:
+    image: ghcr.io/vozonda/vozonda-web:latest
     build:
       context: .
       dockerfile: Dockerfile.web

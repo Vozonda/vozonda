@@ -4,9 +4,9 @@ Each show answers one question: who can listen to it? There are three levels.
 
 | Level | Feed | Who can listen | What you need |
 |-------|------|----------------|---------------|
-| Only in Vozonda | none | you, in the web UI | nothing |
-| My podcast app | private (link with the feed key) | whoever has the link | your devices reach the address (a VPN such as Tailscale, or the LAN) |
-| Public | open, and/or on Nostr | anyone | see the two channels below |
+| Internal only | none | you, in the web UI | nothing |
+| Private link | private (link with the feed key) | whoever has the link | your devices reach the address (a VPN such as Tailscale, or the LAN) |
+| Public directory | open, and/or on Nostr | anyone | see the two channels below |
 
 A public show has two channels, at least one of them on:
 
@@ -22,7 +22,7 @@ A public show has two channels, at least one of them on:
 - `show.<n>.public` / `show.default.public` (`1` public, `0` private). A new show starts private; making it
   public is a choice. A show from before this switch (no own value) follows the old global `feed.public`
   (unset means private), so existing installs keep their behaviour.
-- `show.<n>.rss` / `show.default.rss`: the show has a feed at all (`0` = only in Vozonda).
+- `show.<n>.rss` / `show.default.rss`: the show has a feed at all (`0` = internal only).
 - `show.<n>.nostr`: Nostr publishing (public by nature).
 
 A private feed answers only with the feed key (404 without, so the feed's existence is not revealed); from
@@ -96,10 +96,11 @@ as permanent. If you need guaranteed removal, use RSS only, where you control th
 
 ## In the app
 
-Settings, section **04 shows & distribution**. Each show is one card: its name and author (they also go into
-every MP3, the player and the share page), for podcast apps its category and description, then its reach.
+Settings, section **04 shows & distribution**. At the top: the Base URL setting and scope detection (VPN,
+LAN, internet). Each show has a card, starting with the default show marked as `[main show (default)]`:
+its name and author (they also go into every MP3, the player and the share page), for podcast apps its
+category and per-show description, then its reach (`internal only`, `private link`, `public directory`).
 The feed URL has a copy button (with the key for a private feed); turning Nostr on asks for an explicit
-confirmation first, and the show's key can be backed up once (nsec). Below the cards: value for value, the AI
-disclosure label, the public address status with links to Apple Podcasts Connect, Spotify for Creators and
-Podcast Index, the defaults for new shows, and the relay and Blossom server lists. The plain "who can listen?"
-cards, the address field with scope detection and the QR code for phones landed in v0.7.3 (#56, #62).
+confirmation first, and the show's key can be backed up once (nsec). Below the cards: directory help links
+in a collapsible accordion, feed defaults & AI disclosure in a unified block, value for value (when enabled),
+and at the end technical infrastructure (Nostr relays and Blossom servers).

@@ -59,7 +59,7 @@ class TestSettingsDistributionSection:
         # #56: one 'who can listen?' card per show replaces the four reaches; the screen sets the switches
         src = self.source()
         card = _read("lib/components/ReachCard.svelte")
-        for label in (">only in vozonda<", ">my podcast app<", ">public<"):
+        for label in (">internal only<", ">private link<", ">public directory<"):
             assert label in card
         assert "<ReachCard" in src
         assert "setShowRss" in src and "setShowPublic" in src and "setNostrPublish" in src

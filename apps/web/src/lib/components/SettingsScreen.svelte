@@ -394,6 +394,7 @@
   let nsecAsk = $state<string | null>(null)
   let nsecShown = $state<Record<string, string>>({})
   let copiedKey = $state('')
+  let expandedShows = $state<Record<string, boolean>>({})
 
   const distShows = $derived((dist?.shows ?? []) as DistShow[])
   const anyFeed = $derived(distShows.some((s) => s.rss === '1'))
@@ -445,14 +446,19 @@
     await applyReach(show, target, true)
   }
 
-  async function saveShow(s: DistShow, patch: { name?: string; author?: string; category?: string }) {
+  async function saveShow(s: DistShow, patch: { name?: string; author?: string; category?: string; description?: string }) {
     const name = (patch.name ?? s.name).trim()
     if (!name) {
       distError = 'a show needs a name'
       return
     }
     try {
-      await updateShow(s.slug, { name, author: patch.author ?? s.author ?? '', category: patch.category ?? s.category ?? '' })
+      await updateShow(s.slug, {
+        name,
+        author: patch.author ?? s.author ?? '',
+        category: patch.category ?? s.category ?? '',
+        description: patch.description ?? s.description ?? ''
+      })
       await loadDistribution()
     } catch (err) {
       distError = err instanceof Error ? err.message.toLowerCase() : 'could not save the show'
@@ -460,9 +466,11 @@
   }
 
   let creatingShow = $state(false)
+  let showDirHelp = $state(false)
   let newShowName = $state('')
   let newShowAuthor = $state('')
   let newShowCategory = $state('')
+  let newShowDesc = $state('')
   let newShowBusy = $state(false)
   let newShowError = $state('')
 
@@ -478,11 +486,13 @@
       await createShow({
         name,
         author: newShowAuthor.trim(),
-        category: newShowCategory.trim()
+        category: newShowCategory.trim(),
+        description: newShowDesc.trim()
       })
       newShowName = ''
       newShowAuthor = ''
       newShowCategory = ''
+      newShowDesc = ''
       creatingShow = false
       await loadDistribution()
     } catch (err) {
@@ -1724,9 +1734,41 @@
       </div>
       <p class="help group-help">each show with what it is and where it goes: a feed for podcast apps, nostr, both, or nothing public.</p>
 
+      <section aria-labelledby="address-h">
+        <div class="sec-head">
+          <h3 id="address-h" class="mono"><Icon name="link" size={18} /> base url</h3>
+        </div>
+        {#if dist}
+          <AddressCard address={dist.address} onchange={loadDistribution} />
+        {/if}
+        {#if anyFeed && dist}
+          <div class="dir-accordion">
+            <button
+              type="button"
+              class="dir-toggle-btn link-unstyled mono"
+              onclick={() => (showDirHelp = !showDirHelp)}
+              aria-expanded={showDirHelp}
+            >
+              <Icon name={showDirHelp ? 'chevron-down' : 'chevron-right'} size={14} />
+              <span>list your feed in podcast apps (apple, spotify, podcast index)</span>
+            </button>
+            {#if showDirHelp}
+              <div class="dir-content">
+                <p class="help">copy a feed url from below and add it once in each directory:</p>
+                <ul class="dir-links mono">
+                  <li><a href={dist.directory_help.apple_podcasts_connect} target="_blank" rel="noreferrer">apple podcasts connect</a></li>
+                  <li><a href={dist.directory_help.spotify_for_creators} target="_blank" rel="noreferrer">spotify for creators</a></li>
+                  <li><a href={dist.directory_help.podcast_index} target="_blank" rel="noreferrer">podcast index</a> <span class="help">(feeds apps like fountain, podverse, antennapod search)</span></li>
+                </ul>
+              </div>
+            {/if}
+          </div>
+        {/if}
+      </section>
+
       <section aria-labelledby="reach-h">
         <div class="sec-head">
-          <h3 id="reach-h" class="mono"><Icon name="share" size={18} /> your shows</h3>
+          <h3 id="reach-h" class="mono"><Icon name="share" size={18} /> shows & feeds</h3>
           <button type="button" class="link mono new-show-trigger" onclick={() => { creatingShow = !creatingShow; newShowError = '' }}>
             <Icon name={creatingShow ? 'close' : 'plus'} size={14} /> {creatingShow ? 'cancel' : 'new show'}
           </button>
@@ -1769,54 +1811,138 @@
           <p class="help">no show yet. click "new show" above or name one in the composer.</p>
         {/if}
         {#each distShows as show (show.slug)}
-          <div class="opt show-reach">
-            <div class="ctl-row">
-              <span class="lab mono show-name">{show.name}</span>
-              <div class="show-ctl-actions">
-                {#if !show.fixed}
-                  <button type="button" class="link mono delete-show-trigger" onclick={() => (deleteShowAsk = show)} aria-label={`Delete ${show.name}`}>
-                    <Icon name="trash" size={13} /> delete
-                  </button>
+          {@const isExpanded = expandedShows[show.slug] ?? show.fixed}
+          {@const isRss = show.rss === '1'}
+          {@const isNostr = show.nostr === '1'}
+          {@const isPublic = show.public === '1'}
+          {@const reachLabel = (isNostr || (isRss && isPublic)) ? 'public directory' : isRss ? 'private link' : 'internal only'}
+          <div class="show-reach show-card-boxed">
+            <div class="show-card-head">
+              <div class="show-title-group">
+                <button type="button" class="link-unstyled show-toggle-btn mono" onclick={() => { expandedShows = { ...expandedShows, [show.slug]: !isExpanded } }} aria-expanded={isExpanded}>
+                  <Icon name={isExpanded ? 'chevron-down' : 'chevron-right'} size={14} />
+                  <span class="show-name">{show.name}</span>
+                </button>
+                {#if show.fixed}
+                  <span class="show-type-badge mono">main show (default)</span>
                 {/if}
+              </div>
+              <div class="show-meta-actions">
+                <span class="show-status-pill mono" class:active-feed={isRss || isNostr}>
+                  <Icon name={isRss ? 'rss' : isNostr ? 'radio' : 'lock'} size={12} /> {reachLabel}
+                </span>
+                <div class="show-ctl-actions">
+                  <button type="button" class="link mono" onclick={() => { expandedShows = { ...expandedShows, [show.slug]: !isExpanded } }} aria-label={isExpanded ? `Done editing ${show.name}` : `Edit ${show.name}`}>
+                    <Icon name={isExpanded ? 'check' : 'sliders'} size={13} /> {isExpanded ? 'done' : 'edit'}
+                  </button>
+                  {#if !show.fixed}
+                    <button type="button" class="link mono delete-show-trigger" onclick={() => (deleteShowAsk = show)} aria-label={`Delete ${show.name}`}>
+                      <Icon name="trash" size={13} /> delete
+                    </button>
+                  {/if}
+                </div>
               </div>
             </div>
-            {#if show.fixed}
-              <p class="help">the default show: every episode without a named show, in the master feed. name a show in the composer to give it its own reach and nostr key.</p>
-              <div class="show-fields">
-                <label class="lab mono" for="s-show-name">name</label>
-                <input id="s-show-name" class="mono text-in" type="text" maxlength="80" placeholder="your show title"
-                  value={values['show.name']} onchange={(e) => { set('show.name', e.currentTarget.value); void loadDistribution() }} />
-                <label class="lab mono" for="s-show-author">author</label>
-                <input id="s-show-author" class="mono text-in" type="text" maxlength="80" placeholder="creator name"
-                  value={values['show.author']} onchange={(e) => set('show.author', e.currentTarget.value)} />
-                <label class="lab mono" for="s-show-category">category</label>
-                <input id="s-show-category" class="mono text-in" type="text" maxlength="60" placeholder="Technology"
-                  value={values['show.category']} onchange={(e) => set('show.category', e.currentTarget.value)} />
-                <label class="lab mono" for="s-show-desc">description</label>
-                <textarea id="s-show-desc" class="mono text-in desc-ta" rows="3" maxlength="4000" spellcheck="false"
-                  placeholder="what your show is about" value={values['show.description']}
-                  onchange={(e) => set('show.description', e.currentTarget.value)}></textarea>
-              </div>
-              <p class="help">name and author also go into every mp3, the player and the share page; category and description are for podcast apps.</p>
-            {:else}
-              <div class="show-fields">
-                <label class="lab mono" for={`s-${show.slug}-name`}>name</label>
-                <input id={`s-${show.slug}-name`} class="mono text-in" type="text" maxlength="80" value={show.name}
-                  onchange={(e) => saveShow(show, { name: e.currentTarget.value })} />
-                <label class="lab mono" for={`s-${show.slug}-author`}>author</label>
-                <input id={`s-${show.slug}-author`} class="mono text-in" type="text" maxlength="80" value={show.author ?? ''}
-                  onchange={(e) => saveShow(show, { author: e.currentTarget.value })} />
-                {#if show.rss === '1'}
-                  <label class="lab mono" for={`s-${show.slug}-category`}>category</label>
-                  <input id={`s-${show.slug}-category`} class="mono text-in" type="text" maxlength="60" placeholder="Technology"
-                    value={show.category ?? ''} onchange={(e) => saveShow(show, { category: e.currentTarget.value })} />
+
+            {#if isExpanded}
+              <div class="show-card-body">
+                {#if show.fixed}
+                  <p class="help show-desc-help">the default show: every episode without a named show, in the master feed. cannot be deleted.</p>
+                  <div class="show-fields">
+                    <label class="lab mono" for="s-show-name">name</label>
+                    <input id="s-show-name" class="mono text-in" type="text" maxlength="80" placeholder="your show title"
+                      value={values['show.name']} onchange={(e) => { set('show.name', e.currentTarget.value); void loadDistribution() }} />
+                    <label class="lab mono" for="s-show-author">author</label>
+                    <input id="s-show-author" class="mono text-in" type="text" maxlength="80" placeholder="creator name"
+                      value={values['show.author']} onchange={(e) => set('show.author', e.currentTarget.value)} />
+                    <label class="lab mono" for="s-show-category">category</label>
+                    <input id="s-show-category" class="mono text-in" type="text" maxlength="60" placeholder="Technology"
+                      value={values['show.category']} onchange={(e) => set('show.category', e.currentTarget.value)} />
+                    <label class="lab mono desc-lab" for="s-show-desc">description</label>
+                    <textarea id="s-show-desc" class="mono text-in desc-ta" rows="3" maxlength="4000" spellcheck="false"
+                      placeholder="what your show is about" value={values['show.description']}
+                      onchange={(e) => set('show.description', e.currentTarget.value)}></textarea>
+                  </div>
+                  <p class="help show-fields-help">name and author also go into every mp3, the player and the share page; category and description are for podcast apps.</p>
+                {:else}
+                  <div class="show-fields">
+                    <label class="lab mono" for={`s-${show.slug}-name`}>name</label>
+                    <input id={`s-${show.slug}-name`} class="mono text-in" type="text" maxlength="80" value={show.name}
+                      onchange={(e) => saveShow(show, { name: e.currentTarget.value })} />
+                    <label class="lab mono" for={`s-${show.slug}-author`}>author</label>
+                    <input id={`s-${show.slug}-author`} class="mono text-in" type="text" maxlength="80" value={show.author ?? ''}
+                      onchange={(e) => saveShow(show, { author: e.currentTarget.value })} />
+                    <label class="lab mono" for={`s-${show.slug}-category`}>category</label>
+                    <input id={`s-${show.slug}-category`} class="mono text-in" type="text" maxlength="60" placeholder="Technology"
+                      value={show.category ?? ''} onchange={(e) => saveShow(show, { category: e.currentTarget.value })} />
+                    <label class="lab mono desc-lab" for={`s-${show.slug}-desc`}>description</label>
+                    <textarea id={`s-${show.slug}-desc`} class="mono text-in desc-ta" rows="2" maxlength="4000" spellcheck="false"
+                      placeholder="what your show is about" value={show.description ?? ''}
+                      onchange={(e) => saveShow(show, { description: e.currentTarget.value })}></textarea>
+                  </div>
+                {/if}
+
+                {#if dist}
+                  <ReachCard {show} address={dist.address} busy={reachBusy === show.slug}
+                    onchoose={(target) => void applyReach(show, target)} />
+                {/if}
+
+                {#if show.feed_url}
+                  <div class="feed-url-block">
+                    <span class="feed-url-label mono">rss feed</span>
+                    <div class="feed-url-box">
+                      <code class="feed-url-code mono">{show.feed_url}</code>
+                      <button type="button" class="feed-copy-btn mono" onclick={() => copyText(`feed-${show.slug}`, show.feed_url ?? '')} aria-label={`Copy the feed URL of ${show.name}`}>
+                        <Icon name={copiedKey === `feed-${show.slug}` ? 'check' : 'copy'} size={13} />
+                        <span>{copiedKey === `feed-${show.slug}` ? 'copied' : 'copy'}</span>
+                      </button>
+                    </div>
+                  </div>
+                {/if}
+
+                {#if !show.fixed && show.nostr === '1'}
+                  {@const ns = nostrStatus[show.slug]}
+                  <div class="kv mono nostr-kv">
+                    <span class="kv-key">nostr</span>
+                    {#if ns?.npub}
+                      <code class="kv-val">{ns.npub}</code>
+                      <button type="button" class="link mono" onclick={() => copyText(`npub-${show.slug}`, ns.npub ?? '')} aria-label={`Copy the npub of ${show.name}`}>
+                        <Icon name={copiedKey === `npub-${show.slug}` ? 'check' : 'copy'} size={13} /> {copiedKey === `npub-${show.slug}` ? 'copied' : 'copy'}
+                      </button>
+                    {:else}
+                      <span class="kv-val help">the show's key is created with its first published episode.</span>
+                    {/if}
+                  </div>
+                  {#if ns?.npub}
+                    {#if nsecShown[show.slug]}
+                      <div class="confirm-box">
+                        <p class="mono confirm-title">secret key of {show.name}</p>
+                        <code class="kv-val secret">{nsecShown[show.slug]}</code>
+                        <p class="help">store it in your password manager now. it is shown this once; whoever has it can publish as this show.</p>
+                        <div class="confirm-actions">
+                          <button type="button" class="link mono" onclick={() => copyText(`nsec-${show.slug}`, nsecShown[show.slug] ?? '')}>
+                            <Icon name={copiedKey === `nsec-${show.slug}` ? 'check' : 'copy'} size={13} /> {copiedKey === `nsec-${show.slug}` ? 'copied' : 'copy'}
+                          </button>
+                          <button type="button" class="link mono" onclick={() => { const n = { ...nsecShown }; delete n[show.slug]; nsecShown = n }}>done, hide it</button>
+                        </div>
+                      </div>
+                    {:else if nsecAsk === show.slug}
+                      <div class="confirm-box" role="dialog" aria-modal="false" aria-label="Show the secret key" tabindex="-1"
+                        onkeydown={(e) => { if (e.key === 'Escape') nsecAsk = null }}>
+                        <p class="help">the secret key (nsec) controls this show on nostr. show it once to back it up?</p>
+                        <div class="confirm-actions">
+                          <button type="button" class="probe-btn mono" onclick={() => revealNsec(show.slug)}>show it once</button>
+                          <button type="button" class="link mono" onclick={() => (nsecAsk = null)}>cancel</button>
+                        </div>
+                      </div>
+                    {:else}
+                      <button type="button" class="link mono key-link" onclick={() => (nsecAsk = show.slug)}>
+                        <Icon name="key" size={13} /> back up the key
+                      </button>
+                    {/if}
+                  {/if}
                 {/if}
               </div>
-            {/if}
-
-            {#if dist}
-              <ReachCard {show} address={dist.address} busy={reachBusy === show.slug}
-                onchoose={(target) => void applyReach(show, target)} />
             {/if}
 
             {#if deleteShowAsk?.slug === show.slug}
@@ -1855,62 +1981,6 @@
                   <button type="button" class="link mono" onclick={() => (confirmNostr = null)}>cancel</button>
                 </div>
               </div>
-            {/if}
-
-            {#if show.feed_url}
-              <div class="kv mono">
-                <span class="kv-key">rss feed</span>
-                <code class="kv-val">{show.feed_url}</code>
-                <button type="button" class="link mono" onclick={() => copyText(`feed-${show.slug}`, show.feed_url ?? '')} aria-label={`Copy the feed URL of ${show.name}`}>
-                  <Icon name={copiedKey === `feed-${show.slug}` ? 'check' : 'copy'} size={13} /> {copiedKey === `feed-${show.slug}` ? 'copied' : 'copy'}
-                </button>
-              </div>
-              {#if dist?.feed_private}
-                <p class="help">private feed: the link carries its key, so anyone who has the link can listen. keep it on your own devices.</p>
-              {/if}
-            {/if}
-
-            {#if !show.fixed && show.nostr === '1'}
-              {@const ns = nostrStatus[show.slug]}
-              <div class="kv mono">
-                <span class="kv-key">nostr</span>
-                {#if ns?.npub}
-                  <code class="kv-val">{ns.npub}</code>
-                  <button type="button" class="link mono" onclick={() => copyText(`npub-${show.slug}`, ns.npub ?? '')} aria-label={`Copy the npub of ${show.name}`}>
-                    <Icon name={copiedKey === `npub-${show.slug}` ? 'check' : 'copy'} size={13} /> {copiedKey === `npub-${show.slug}` ? 'copied' : 'copy'}
-                  </button>
-                {:else}
-                  <span class="kv-val help">the show's key is created with its first published episode.</span>
-                {/if}
-              </div>
-              {#if ns?.npub}
-                {#if nsecShown[show.slug]}
-                  <div class="confirm-box">
-                    <p class="mono confirm-title">secret key of {show.name}</p>
-                    <code class="kv-val secret">{nsecShown[show.slug]}</code>
-                    <p class="help">store it in your password manager now. it is shown this once; whoever has it can publish as this show.</p>
-                    <div class="confirm-actions">
-                      <button type="button" class="link mono" onclick={() => copyText(`nsec-${show.slug}`, nsecShown[show.slug] ?? '')}>
-                        <Icon name={copiedKey === `nsec-${show.slug}` ? 'check' : 'copy'} size={13} /> {copiedKey === `nsec-${show.slug}` ? 'copied' : 'copy'}
-                      </button>
-                      <button type="button" class="link mono" onclick={() => { const n = { ...nsecShown }; delete n[show.slug]; nsecShown = n }}>done, hide it</button>
-                    </div>
-                  </div>
-                {:else if nsecAsk === show.slug}
-                  <div class="confirm-box" role="dialog" aria-modal="false" aria-label="Show the secret key" tabindex="-1"
-                    onkeydown={(e) => { if (e.key === 'Escape') nsecAsk = null }}>
-                    <p class="help">the secret key (nsec) controls this show on nostr. show it once to back it up?</p>
-                    <div class="confirm-actions">
-                      <button type="button" class="probe-btn mono" onclick={() => revealNsec(show.slug)}>show it once</button>
-                      <button type="button" class="link mono" onclick={() => (nsecAsk = null)}>cancel</button>
-                    </div>
-                  </div>
-                {:else}
-                  <button type="button" class="link mono key-link" onclick={() => (nsecAsk = show.slug)}>
-                    <Icon name="key" size={13} /> back up the key
-                  </button>
-                {/if}
-              {/if}
             {/if}
           </div>
         {/each}
@@ -2036,20 +2106,38 @@
 
         <!-- Feed URL Card -->
         <div class="v4v-recipient-card">
-          <div class="ctl-row">
-            <span class="v4v-card-title mono" id="feed-url-lab">master podcast feed</span>
-            <button class="link mono" onclick={() => void copyFeed()} aria-describedby="feed-url-lab">{copiedFeed ? 'copied!' : 'copy'}</button>
+          <label class="v4v-card-title mono" for="master-feed-code">master podcast feed</label>
+          <div class="feed-url-box">
+            <code id="master-feed-code" class="feed-url-code">{feedXmlUrl}</code>
+            <button type="button" class="feed-copy-btn mono" onclick={() => void copyFeed()}>
+              {copiedFeed ? 'copied' : 'copy'}
+            </button>
           </div>
-          <span class="mono feed-url" title={feedXmlUrl}>{feedXmlUrl}</span>
           <p class="help v4v-help">contains all manual episodes and automated watchlists · point Apple Podcasts, Pocket Casts, or Fountain at this URL</p>
         </div>
       </section>
 
-      <section aria-labelledby="disclosure-h">
+
+
+      <section aria-labelledby="dist-defaults-h">
         <div class="sec-head">
-          <h3 id="disclosure-h" class="mono"><Icon name="rss" size={18} /> ai disclosure</h3>
-          <button class="link mono" onclick={() => resetSection(['disclosure.ai_label'])}>reset</button>
+          <h3 id="dist-defaults-h" class="mono"><Icon name="sliders" size={18} /> feed defaults & disclosure</h3>
+          <button class="link mono" onclick={() => resetSection(['distribution.rss_default', 'nostr.publish_default', 'disclosure.ai_label'])}>reset</button>
         </div>
+        <p class="help">reach defaults for new shows, plus global feed and tag disclosure.</p>
+        {#each [{ key: 'distribution.rss_default', label: 'rss feed for podcast apps' }, { key: 'nostr.publish_default', label: 'publish on nostr' }] as d (d.key)}
+          {@const on = (values[d.key] ?? defaults[d.key]) === '1'}
+          <div class="opt">
+            <div class="ctl-row">
+              <label class="lab mono" for={`s-dist-${d.key.replace(/\./g, '-')}`}>{d.label}</label>
+              <span class="mono readout">{on ? 'on' : 'off'}</span>
+            </div>
+            <div id={`s-dist-${d.key.replace(/\./g, '-')}`} class="seg" role="radiogroup" aria-label={`${d.label} for new shows`}>
+              <button type="button" role="radio" aria-checked={on} class:sel={on} onclick={() => set(d.key, '1')}>on</button>
+              <button type="button" role="radio" aria-checked={!on} class:sel={!on} onclick={() => set(d.key, '0')}>off</button>
+            </div>
+          </div>
+        {/each}
         <div class="opt">
           <div class="ctl-row">
             <label class="lab mono" for="s-disclosure">ai-generated label in feed, page and ID3</label>
@@ -2077,47 +2165,6 @@
           </div>
           <p class="help">appends an "AI-generated: script by X, voices by Y." line to the rss feed, episode page and mp3 ID3 tags.</p>
         </div>
-      </section>
-
-      <section aria-labelledby="address-h">
-        <div class="sec-head">
-          <h3 id="address-h" class="mono"><Icon name="link" size={18} /> address for other devices</h3>
-        </div>
-        {#if dist}
-          <AddressCard address={dist.address} onchange={loadDistribution} />
-        {/if}
-        {#if anyFeed && dist}
-          <div class="opt">
-            <span class="lab mono">list your feed in podcast apps</span>
-            <p class="help">copy a feed url from above and add it once in each directory:</p>
-            <ul class="dir-links mono">
-              <li><a href={dist.directory_help.apple_podcasts_connect} target="_blank" rel="noreferrer">apple podcasts connect</a></li>
-              <li><a href={dist.directory_help.spotify_for_creators} target="_blank" rel="noreferrer">spotify for creators</a></li>
-              <li><a href={dist.directory_help.podcast_index} target="_blank" rel="noreferrer">podcast index</a> <span class="help">(feeds apps like fountain, podverse, antennapod search)</span></li>
-            </ul>
-          </div>
-        {/if}
-      </section>
-
-      <section aria-labelledby="dist-defaults-h">
-        <div class="sec-head">
-          <h3 id="dist-defaults-h" class="mono"><Icon name="sliders" size={18} /> defaults for new shows</h3>
-          <button class="link mono" onclick={() => resetSection(['distribution.rss_default', 'nostr.publish_default'])}>reset</button>
-        </div>
-        <p class="help">a new show starts with these; existing shows keep their own reach.</p>
-        {#each [{ key: 'distribution.rss_default', label: 'rss feed for podcast apps' }, { key: 'nostr.publish_default', label: 'publish on nostr' }] as d (d.key)}
-          {@const on = (values[d.key] ?? defaults[d.key]) === '1'}
-          <div class="opt">
-            <div class="ctl-row">
-              <label class="lab mono" for={`s-dist-${d.key.replace(/\./g, '-')}`}>{d.label}</label>
-              <span class="mono readout">{on ? 'on' : 'off'}</span>
-            </div>
-            <div id={`s-dist-${d.key.replace(/\./g, '-')}`} class="seg" role="radiogroup" aria-label={`${d.label} for new shows`}>
-              <button type="button" role="radio" aria-checked={on} class:sel={on} onclick={() => set(d.key, '1')}>on</button>
-              <button type="button" role="radio" aria-checked={!on} class:sel={!on} onclick={() => set(d.key, '0')}>off</button>
-            </div>
-          </div>
-        {/each}
       </section>
 
       <section aria-labelledby="servers-h">
@@ -2847,7 +2894,7 @@
 
   .v4v-recipient-card {
     background: color-mix(in srgb, var(--ink) 2%, var(--paper));
-    border: 1.5px solid color-mix(in srgb, var(--ink) 14%, var(--line));
+    border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: var(--space-3);
     display: grid;
@@ -3379,6 +3426,177 @@
     background: var(--danger-fill);
     border-color: var(--danger-fill);
     color: #ffffff;
+  }
+  .show-card-boxed {
+    border: 1px solid var(--line) !important;
+    border-radius: var(--radius);
+    padding: var(--space-4);
+    margin-bottom: var(--space-3);
+    background: color-mix(in srgb, var(--ink) 2%, var(--paper));
+  }
+  .show-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-3);
+  }
+  .show-title-group {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    flex: 1 1 260px;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+  .show-meta-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-left: auto;
+  }
+  .show-card-body {
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid color-mix(in srgb, var(--line) 30%, transparent);
+    display: grid;
+    gap: var(--space-3);
+  }
+  .show-desc-help {
+    margin: 0;
+  }
+  .show-fields-help {
+    margin: 0;
+  }
+  .show-type-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: calc(var(--ui-size) * 0.78);
+    padding: 1px 6px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--ink) 5%, var(--paper));
+    color: var(--ink-soft);
+    font-weight: 500;
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+  .show-fields label.desc-lab {
+    align-self: start;
+    padding-top: var(--space-2);
+  }
+  .feed-url-block {
+    display: grid;
+    gap: var(--space-1);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid color-mix(in srgb, var(--line) 30%, transparent);
+  }
+  .feed-url-label {
+    color: var(--ink-soft);
+    font-size: calc(var(--ui-size) * 0.9);
+  }
+  .feed-url-box {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-1) var(--space-2);
+    background: var(--paper);
+    min-width: 0;
+  }
+  .feed-url-code {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: calc(var(--ui-size) * 0.9);
+  }
+  .feed-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--ink-soft);
+    font-family: var(--font-mono);
+    font-size: calc(var(--ui-size) * 0.9);
+    text-decoration: underline;
+    text-decoration-color: var(--line);
+    flex: none;
+    min-height: 24px;
+  }
+  .feed-copy-btn:hover {
+    color: var(--green);
+  }
+  .link-unstyled {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+  }
+  .show-toggle-btn {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: var(--ui-size);
+  }
+  .show-toggle-btn :global(.lucide) {
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+  .show-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: calc(var(--ui-size) * 0.85);
+    padding: 1px 6px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    background: var(--paper);
+  }
+  .show-status-pill.active-feed {
+    border-color: var(--green);
+    color: var(--green);
+    background: color-mix(in srgb, var(--green) 8%, var(--paper));
+  }
+  .dir-accordion {
+    margin-top: var(--space-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: var(--space-2) var(--space-3);
+    background: color-mix(in srgb, var(--paper) 4%, transparent);
+  }
+  .dir-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--ui-size);
+    color: var(--ink-soft);
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+  }
+  .dir-toggle-btn:hover {
+    color: var(--ink);
+  }
+  .dir-content {
+    margin-top: var(--space-2);
+    display: grid;
+    gap: var(--space-2);
+    padding-top: var(--space-2);
+    border-top: 1px solid color-mix(in srgb, var(--line) 40%, transparent);
   }
   .show-reach .show-name {
     color: var(--ink);

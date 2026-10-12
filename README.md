@@ -12,6 +12,9 @@
 <p align="center">
   <a href="https://github.com/Vozonda/vozonda/actions/workflows/ci.yml"><img src="https://github.com/Vozonda/vozonda/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/Vozonda/vozonda/releases"><img src="https://img.shields.io/github/v/release/Vozonda/vozonda?sort=semver" alt="Release"></a>
+  <a href="https://pypi.org/project/vozonda/"><img src="https://img.shields.io/pypi/v/vozonda.svg" alt="PyPI"></a>
+  <a href="https://www.npmjs.com/package/vozonda"><img src="https://img.shields.io/npm/v/vozonda.svg" alt="npm"></a>
+  <a href="https://github.com/Vozonda/vozonda/pkgs/container/vozonda-api"><img src="https://img.shields.io/badge/docker-ghcr.io-238636?logo=docker&logoColor=white" alt="GHCR"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-4a7300" alt="MIT licence"></a>
   <a href="https://vozonda.com"><img src="https://img.shields.io/badge/website-vozonda.com-1a1815" alt="Website"></a>
 </p>
@@ -84,6 +87,14 @@ If ports 8787 or 4173 are already in use, edit `.env` and change `VOZONDA_PORT` 
 Open **http://localhost:4173**, paste an article URL or text, and click
 **make it talk**. Check readiness anytime with `curl http://localhost:8787/doctor`.
 For full walkthrough and troubleshooting, see [docs/quickstart.md](docs/quickstart.md).
+
+### Package Registries & Distribution
+
+Vozonda is distributed across major packaging ecosystems:
+
+- **Docker (GHCR):** `ghcr.io/vozonda/vozonda-api` and `ghcr.io/vozonda/vozonda-web` (prebuilt container images)
+- **Python (PyPI):** [`pip install vozonda`](https://pypi.org/project/vozonda/)
+- **npm:** [`npm install vozonda`](https://www.npmjs.com/package/vozonda)
 
 ## How it works
 

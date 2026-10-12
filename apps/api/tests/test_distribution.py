@@ -451,3 +451,48 @@ def test_feed_urls_carry_the_key_when_the_feed_is_private(monkeypatch):
     data = TestClient(main_mod.app).get("/distribution").json()
     assert data["feed_private"] is False
     assert all("key=" not in (s["feed_url"] or "") for s in data["shows"])
+
+
+def test_default_show_is_first_in_distribution(client):
+    """The default show is pinned to the top of the distribution list."""
+    ss.set_setting("show.name", "Master Podcast")
+    _create_show(client, "Custom Show Alpha")
+    _create_show(client, "Custom Show Beta")
+    shows = client.get("/distribution").json()["shows"]
+    assert len(shows) >= 3
+    assert shows[0]["slug"] == "default"
+    assert shows[0]["fixed"] is True
+
+
+def test_show_description_create_update_and_feed(client, monkeypatch):
+    """Per-show descriptions are persisted, returned in /shows and /distribution, and rendered in feed."""
+    import vozonda_api.routers.feeds as feeds_mod
+
+    monkeypatch.setattr(feeds_mod, "_feed_is_public", lambda *a, **k: True)
+
+    slug = client.post("/shows", json={"name": "Story Hour", "description": "Weekly bedtime stories"}).json()["slug"]
+
+    # Check /shows listing
+    shows_list = client.get("/shows").json()["shows"]
+    story_show = next(s for s in shows_list if s["slug"] == slug)
+    assert story_show["description"] == "Weekly bedtime stories"
+
+    # Check /distribution listing
+    dist_shows = client.get("/distribution").json()["shows"]
+    dist_story = next(s for s in dist_shows if s["slug"] == slug)
+    assert dist_story["description"] == "Weekly bedtime stories"
+
+    # Update description
+    update_res = client.put(f"/shows/{slug}", json={"name": "Story Hour", "description": "Daily bedtime stories"})
+    assert update_res.status_code == 200
+
+    # Verify update in /distribution
+    dist_shows_updated = client.get("/distribution").json()["shows"]
+    dist_story_updated = next(s for s in dist_shows_updated if s["slug"] == slug)
+    assert dist_story_updated["description"] == "Daily bedtime stories"
+
+    # Verify per-show feed XML
+    feed_res = client.get(f"/{slug}/Story%20Hour/feed.xml")
+    assert feed_res.status_code == 200
+    assert "<description>Daily bedtime stories</description>" in feed_res.text
+
