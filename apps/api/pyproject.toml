@@ -1,7 +1,20 @@
 [project]
 name = "vozonda"
-version = "0.7.3"
+version = "0.7.4"
 description = "Vozonda orchestrator: url to two-voice podcast dialogue"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Vozonda", email = "vozonda@proton.me" }]
+keywords = ["podcast", "audio", "tts", "ai", "rss", "voice", "overview", "private", "sovereign"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
@@ -66,6 +79,13 @@ filterwarnings = [
     "ignore:.*httpx.*",
     "ignore::DeprecationWarning",
 ]
+
+[project.urls]
+Homepage = "https://vozonda.com"
+Repository = "https://github.com/Vozonda/vozonda"
+Documentation = "https://github.com/Vozonda/vozonda#readme"
+"Bug Tracker" = "https://github.com/Vozonda/vozonda/issues"
+Changelog = "https://github.com/Vozonda/vozonda/blob/main/CHANGELOG.md"
 
 [project.scripts]
 vozonda = "vozonda_api.main:serve"

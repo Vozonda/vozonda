@@ -100,6 +100,8 @@ EMAIL_ALLOWLIST_PATHS = {
     "docs/design.md",
     ".env.example",
     "apps/api/.env.example",
+    "apps/api/pyproject.toml",
+    "packages/npm/package.json",
 }
 
 # Host-path patterns are expected in container/Docker configs and test fixtures.

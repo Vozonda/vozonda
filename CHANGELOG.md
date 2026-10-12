@@ -5,10 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.4] - 2026-10-12
 
 ### Added
 
+- distribution: PyPI trusted publisher workflow and package metadata (`vozonda` on PyPI)
+- distribution: GitHub Container Registry multi-arch workflows (`ghcr.io/vozonda/vozonda`)
+- distribution: npm registry package distribution (`vozonda` on npm)
 - settings: per-show `description` field for custom shows in the UI and API/feeds (previously only available for the default show)
 - settings: default show is explicitly badged as `main show (default)` and pinned to the top of the shows list
 
