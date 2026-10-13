@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -53,24 +54,27 @@ def main():
         text = seg.get("text", "").strip()
         text = re.sub(r'\[[a-zA-Z0-9\s_,-]+\]', '', text).strip()
         text = re.sub(r'\([a-zA-Z0-9\s_,-]+\)', '', text).strip()
-        cache = cache_dir / f"{i:04d}_{spk}.wav"
+        vc = voices.get(spk, {})
+        if isinstance(vc, str):
+            timbre = vc
+            instruct = DEFAULT_INSTRUCT
+        else:
+            timbre = vc.get("timbre", "aiden")
+            instruct = vc.get("instruct") or DEFAULT_INSTRUCT
+        content_hash = hashlib.sha256(f"{text}_{timbre}_{instruct}".encode()).hexdigest()[:12]
+        cache = cache_dir / f"{i:04d}_{spk}_{content_hash}.wav"
+        legacy_cache = cache_dir / f"{i:04d}_{spk}.wav"
         if not text:
             turn_durations.append(0.0)
             continue
-        if cache.exists() and cache.stat().st_size > 44:
-            wavs, sr = sf.read(cache, dtype="float32"), None
+        cached_target = cache if (cache.exists() and cache.stat().st_size > 44) else (legacy_cache if (legacy_cache.exists() and legacy_cache.stat().st_size > 44) else None)
+        if cached_target:
+            wavs, sr = sf.read(cached_target, dtype="float32"), None
             wav = np.asarray(wavs, dtype=np.float32)
             sr = sr or 24000
             if wav.ndim > 1:
                 wav = wav.mean(axis=1)
         else:
-            vc = voices.get(spk, {})
-            if isinstance(vc, str):
-                timbre = vc
-                instruct = DEFAULT_INSTRUCT
-            else:
-                timbre = vc.get("timbre", "aiden")
-                instruct = vc.get("instruct") or DEFAULT_INSTRUCT
             with torch.no_grad():
                 wavs, sr = model.generate_custom_voice(
                     text=text, speaker=timbre, language=cfg.get("language", "English"), instruct=instruct
