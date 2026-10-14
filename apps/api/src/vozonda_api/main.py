@@ -3992,9 +3992,23 @@ async def delete_job_nostr(job_id: str) -> dict:
 app.include_router(billing_router)
 
 
-def serve() -> None:
+def serve(argv: list[str] | None = None) -> None:
+    """`vozonda` / `vozonda-api`: run the API server. Flags override VOZONDA_HOST / VOZONDA_PORT."""
+    import argparse
+
     import uvicorn
 
-    host = env("HOST", "127.0.0.1")
-    port = int(env("PORT", "8787"))
-    uvicorn.run(app, host=host, port=port)
+    from .version import __version__
+
+    parser = argparse.ArgumentParser(
+        prog="vozonda",
+        description="Vozonda orchestrator API (the web UI ships in the Docker image). "
+        "Settings come from VOZONDA_* environment variables, see .env.example.",
+    )
+    parser.add_argument("--host", default=env("HOST", "127.0.0.1"),
+                        help="address to listen on (default: VOZONDA_HOST or 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=int(env("PORT", "8787")),
+                        help="port (default: VOZONDA_PORT or 8787)")
+    parser.add_argument("--version", action="version", version=f"vozonda {__version__}")
+    args = parser.parse_args(argv)
+    uvicorn.run(app, host=args.host, port=args.port)
