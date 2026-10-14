@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- pipeline: a cached Qwen3-TTS turn crashed the render with `ValueError` (`sf.read` result unpacked wrongly), so a resumed render always failed; the turn cache key now covers text, voice, instruction and language, and old position-only cache files are no longer reused (they could replay a line that had since been edited)
+- cli: `vozonda --help` started the server; it now prints usage, and `--host`, `--port`, `--version` work (defaults still from `VOZONDA_HOST` / `VOZONDA_PORT`)
+- docs: the PyPI and npm package pages said the API listens on 8765 and the web UI on 5173 (it is 8787 and 4173), did not say that the PyPI package has no web UI, and the npm package did not say it installs no code
+- ci: `publish-pypi` skips files PyPI already has (0.7.4 was published before its tag) and runs in the `pypi` environment
+- tests: `test_generator_deterministic` skips with the reason when headless Chrome cannot start (e.g. in a sandbox without unix sockets) instead of failing every gate there
+
 ## [0.7.4] - 2026-10-12
 
 ### Added

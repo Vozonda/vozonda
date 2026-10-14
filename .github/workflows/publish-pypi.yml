@@ -9,6 +9,9 @@ jobs:
   pypi-publish:
     name: Build and publish to PyPI
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/vozonda/
     permissions:
       id-token: write # Mandatory for PyPI trusted publishing (OIDC)
       contents: read
@@ -22,3 +25,6 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: apps/api/dist/
+          # 0.7.4 went up by workflow_dispatch before its tag existed: the tag push must not
+          # fail on files PyPI already has.
+          skip-existing: true
