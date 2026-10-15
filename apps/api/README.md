@@ -32,62 +32,58 @@ Give Vozonda articles, papers, PDFs, audio files, podcast episodes, screenshots,
 
 ---
 
+## Which install do you want?
+
+| You want | Use |
+| :--- | :--- |
+| **The app** (web UI, feeds, voices, everything) | [Docker](#docker-quickstart) |
+| The orchestrator API and pipeline without the web UI, e.g. to drive it from scripts or an agent | this package |
+
+This package is the Python orchestrator only. It does **not** contain the web UI. You talk to it
+over its HTTP API (`/docs` lists the routes) or through the MCP server.
+
 ## Installation
 
-Install the orchestrator package from PyPI:
+Needs Python 3.11+, `ffmpeg` on the `PATH`, and an LLM endpoint (a local Ollama or vLLM, or any
+OpenAI-compatible API).
 
 ```bash
-pip install vozonda
+pip install "vozonda[tts-kokoro]"       # orchestrator + Kokoro voices on CPU
+# or: uv tool install "vozonda[tts-kokoro]"
 ```
 
-Or with `uv`:
+### Optional extras
 
-```bash
-uv add vozonda
-```
+| Extra | Adds |
+| :--- | :--- |
+| `tts-kokoro` | Kokoro voices, CPU-friendly |
+| `tts-piper` | Piper voices |
+| `stt` | Local transcription of audio sources (faster-whisper) |
+| `tts` | All of the above plus Qwen3-TTS (needs torch) |
+| `mcp` | MCP server for agents |
 
-### Optional Extras
-
-- **Local Kokoro TTS (CPU-friendly):**
-  ```bash
-  pip install "vozonda[tts-kokoro]"
-  ```
-- **Local Piper TTS:**
-  ```bash
-  pip install "vozonda[tts-piper]"
-  ```
-- **Local Transcription (faster-whisper):**
-  ```bash
-  pip install "vozonda[stt]"
-  ```
-- **All TTS & STT extras:**
-  ```bash
-  pip install "vozonda[tts]"
-  ```
-- **Agent MCP server support:**
-  ```bash
-  pip install "vozonda[mcp]"
-  ```
-
----
+Without a TTS extra the server starts, but it cannot voice an episode.
 
 ## Usage
 
-Start the orchestrator API server:
-
 ```bash
-vozonda
-# or
-vozonda-api
+export VOZONDA_LLM_BASE=http://127.0.0.1:11434/v1   # your LLM endpoint
+export VOZONDA_LLM_MODEL=qwen2.5:latest
+vozonda                                            # or: vozonda-api
 ```
 
-By default, the server listens on `http://127.0.0.1:8765`.
+The API listens on `http://127.0.0.1:8787` (`VOZONDA_HOST`, `VOZONDA_PORT` change it); open
+`http://127.0.0.1:8787/docs` for the routes. Every setting is in
+[`.env.example`](https://github.com/Vozonda/vozonda/blob/main/.env.example). Before you expose
+it beyond this computer, read the
+[deployment guide](https://github.com/Vozonda/vozonda/blob/main/docs/deployment.md): remote
+requests need the `VOZONDA_TOKEN`.
 
 ---
 
 ## Docker Quickstart
 
-For full self-hosting with web UI and dependencies:
+The full app, with the web UI and all dependencies:
 
 ```bash
 git clone https://github.com/Vozonda/vozonda.git

@@ -9,10 +9,12 @@ Ensures:
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
-from PIL import Image
+
 import pytest
+from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PUBLIC = REPO_ROOT / "apps" / "web" / "public"
@@ -57,7 +59,30 @@ def test_manifest_names_brand_icons():
     assert any("maskable" in i.get("purpose", "") for i in icons), "Missing maskable icon in manifest"
 
 
+def _chrome_cannot_start() -> str | None:
+    """Why headless Chrome cannot run here, or None. The generator renders with it; where it
+    cannot start at all (no Chrome, or a sandbox without AF_UNIX sockets such as the agent
+    fleet's gate) the determinism check cannot run. A generator that fails while Chrome works
+    still fails the test."""
+    chrome = next((shutil.which(c) for c in ("google-chrome-stable", "google-chrome", "chromium")
+                   if shutil.which(c)), None)
+    if chrome is None:
+        return "no headless Chrome/Chromium installed"
+    try:
+        probe = subprocess.run([chrome, "--headless", "--disable-gpu", "--dump-dom", "about:blank"],
+                               capture_output=True, text=True, timeout=60, check=False)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return f"headless Chrome does not start: {e}"
+    if probe.returncode != 0:
+        lines = [line for line in probe.stderr.splitlines() if "FATAL" in line] or probe.stderr.splitlines()
+        return f"headless Chrome does not start here: {(lines[-1] if lines else 'exit ' + str(probe.returncode))[:200]}"
+    return None
+
+
 def test_generator_deterministic():
+    why = _chrome_cannot_start()
+    if why:
+        pytest.skip(why)
     # Read existing bytes of icon-192.png
     target = PUBLIC / "icon-192.png"
     assert target.exists()

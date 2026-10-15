@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -21,6 +22,26 @@ from qwen_tts import Qwen3TTSModel
 
 MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
 DEFAULT_INSTRUCT = "Speak naturally and clearly."
+
+
+def turn_cache_path(cache_dir: Path, index: int, speaker: str, text: str, timbre: str,
+                    instruct: str, language: str) -> Path:
+    """Where one rendered turn is cached. The name carries a hash of everything that changes the
+    audio, so an edited line, voice, instruction or language renders again instead of reusing
+    stale audio. (Files from before the hash, named by position only, are never read.)"""
+    key = f"{text}\0{timbre}\0{instruct}\0{language}"
+    digest = hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
+    return cache_dir / f"{index:04d}_{speaker}_{digest}.wav"
+
+
+def read_cached_turn(path: Path) -> tuple[np.ndarray, int] | None:
+    """A cached turn as mono float32 and its sample rate; None if missing or empty."""
+    if not path.exists() or path.stat().st_size <= 44:  # 44 bytes: a WAV header and no samples
+        return None
+    wav, sr = sf.read(path, dtype="float32")
+    if wav.ndim > 1:
+        wav = wav.mean(axis=1)
+    return wav, sr
 
 
 def main():
@@ -53,27 +74,25 @@ def main():
         text = seg.get("text", "").strip()
         text = re.sub(r'\[[a-zA-Z0-9\s_,-]+\]', '', text).strip()
         text = re.sub(r'\([a-zA-Z0-9\s_,-]+\)', '', text).strip()
-        cache = cache_dir / f"{i:04d}_{spk}.wav"
+        vc = voices.get(spk, {})
+        if isinstance(vc, str):
+            timbre = vc
+            instruct = DEFAULT_INSTRUCT
+        else:
+            timbre = vc.get("timbre", "aiden")
+            instruct = vc.get("instruct") or DEFAULT_INSTRUCT
         if not text:
             turn_durations.append(0.0)
             continue
-        if cache.exists() and cache.stat().st_size > 44:
-            wavs, sr = sf.read(cache, dtype="float32"), None
-            wav = np.asarray(wavs, dtype=np.float32)
-            sr = sr or 24000
-            if wav.ndim > 1:
-                wav = wav.mean(axis=1)
+        language = cfg.get("language", "English")
+        cache = turn_cache_path(cache_dir, i, spk, text, timbre, instruct, language)
+        cached = read_cached_turn(cache)
+        if cached is not None:
+            wav, sr = cached
         else:
-            vc = voices.get(spk, {})
-            if isinstance(vc, str):
-                timbre = vc
-                instruct = DEFAULT_INSTRUCT
-            else:
-                timbre = vc.get("timbre", "aiden")
-                instruct = vc.get("instruct") or DEFAULT_INSTRUCT
             with torch.no_grad():
                 wavs, sr = model.generate_custom_voice(
-                    text=text, speaker=timbre, language=cfg.get("language", "English"), instruct=instruct
+                    text=text, speaker=timbre, language=language, instruct=instruct
                 )
             wav = np.asarray(wavs[0] if isinstance(wavs, list) else wavs, dtype=np.float32)
             if wav.ndim > 1:

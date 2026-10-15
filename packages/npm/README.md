@@ -19,6 +19,9 @@
 
 ---
 
+> **This npm package installs no code.** It holds the name and points to the app. Vozonda runs
+> with Docker (below); the Python orchestrator is on PyPI.
+
 ## What is Vozonda?
 
 Give Vozonda articles, papers, PDFs, audio files, podcast episodes, screenshots, YouTube videos, RSS feeds or your own notes, and it turns them into the show you want. Audio sources are transcribed locally.
@@ -39,7 +42,7 @@ cd vozonda
 docker compose up -d
 ```
 
-Open `http://localhost:5173` in your browser.
+Open `http://localhost:4173` in your browser.
 
 Or pull prebuilt images from GitHub Container Registry:
 
@@ -49,12 +52,10 @@ docker pull ghcr.io/vozonda/vozonda:latest
 
 ## Python CLI & Orchestrator
 
-The backend orchestrator is also distributed on PyPI:
+The orchestrator API (no web UI) is also on PyPI, for scripts and agents:
 
 ```bash
-pip install vozonda
-# or
-uv add vozonda
+pip install "vozonda[tts-kokoro]"
 ```
 
 ## Resources
