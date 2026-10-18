@@ -59,6 +59,12 @@ Episodes land in your private RSS podcast feed and, if you like, on Nostr.
 
 Ready to try it? Follow the [Docker Quickstart](docs/quickstart.md) to make your first episode.
 
+## Screenshots
+
+![The source tray with a PDF and a Wikipedia article as main sources and a note as context for the hosts, above the "make it talk" button](docs/img/source-tray.webp)
+
+![An episode page: title, player with waveform and cover, and the transcript with chapters, takeaways, highlights, clips and facts](docs/img/episode-page.webp)
+
 <a id="quickstart"></a>
 <a id="quickstart-docker"></a>
 ## Quickstart (Docker)
