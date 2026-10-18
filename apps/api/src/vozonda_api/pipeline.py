@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 from . import budget
 from . import condense as condense_mod
+from .cover import generate_template_cover
 from .env import env
 from .fetcher import FetchError, fetch_article
 from .jobs import JobStore
@@ -2665,15 +2666,6 @@ async def _run_digest_inner(
                 store.update(job_id, og_image=f"{job_id}-og.png")
         except Exception:
             logger.warning("digest og-image download failed for job %s", job_id, exc_info=True)
-    else:
-        try:
-            from .cover import generate_template_cover
-            cover_dest = MEDIA_DIR / f"{job_id}-cover.png"
-            style = job.get("style") or "balanced"
-            generate_template_cover(digest_title, style=style, output=cover_dest)
-            store.update(job_id, og_image=f"{job_id}-cover.png")
-        except Exception:
-            logger.warning("digest template cover failed for job %s", job_id, exc_info=True)
 
     src_lang = detect_source_lang(sections[0]["body"])
     if src_lang:
@@ -2770,6 +2762,17 @@ async def _run_digest_inner(
             store.update(job_id, title=new_title)
     except Exception:
         logger.warning("digest title generation failed for job %s", job_id, exc_info=True)
+
+    # #155: generate template cover if no og_image was downloaded, using the final title
+    if not first_og:
+        try:
+            cover_dest = MEDIA_DIR / f"{job_id}-cover.png"
+            style = job.get("style") or "balanced"
+            final_title = store.get(job_id).get("title") or digest_title
+            generate_template_cover(final_title, style=style, output=cover_dest)
+            store.update(job_id, og_image=f"{job_id}-cover.png")
+        except Exception:
+            logger.warning("digest template cover failed for job %s", job_id, exc_info=True)
 
     # Run digest lint (pass digest=True for digest-specific checks)
     try:
@@ -3011,7 +3014,6 @@ async def _run_job_inner(store: JobStore, job_id: str, job: dict[str, Any]) -> A
                 logger.warning("og-image download failed for job %s", job_id, exc_info=True)
         else:
             try:
-                from .cover import generate_template_cover
                 cover_dest = MEDIA_DIR / f"{job_id}-cover.png"
                 style = job.get("style") or "balanced"
                 generate_template_cover(title, style=style, output=cover_dest)
