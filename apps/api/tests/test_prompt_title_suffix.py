@@ -80,7 +80,7 @@ def pipeline_fakes(monkeypatch, tmp_path):
     monkeypatch.setattr(pipeline_mod, "_finish_from_script", _async_gen_return)
 
 
-def _run_prompt_title(store, job_id, job, body, title, n_sources):
+def _run_prompt_title(store, job_id, job, body, title, n_sources=None):
     """Drive _run_from_body to completion, the way run_job callers do."""
 
     async def go():
@@ -104,7 +104,6 @@ def test_single_source_prompt_title_drops_wikipedia_suffix(pipeline_fakes):
     job: dict[str, Any] = {
         "id": job_id,
         "format": "podcast",
-        "n_sources": 1,
         "language": "en",
         "style": "balanced",
         "tone": "neutral",
@@ -114,13 +113,16 @@ def test_single_source_prompt_title_drops_wikipedia_suffix(pipeline_fakes):
         "hosts": 2,
     }
 
-    _run_prompt_title(store, job_id, job, body, "Daylight saving time - Wikipedia", n_sources=1)
+    # a single-source job calls _run_from_body without n_sources (run_job)
+    _run_prompt_title(store, job_id, job, body, "Daylight saving time - Wikipedia")
 
     assert _capture_script._captured_title == "Daylight saving time"  # type: ignore[attr-defined]
 
 
-def test_combined_job_prompt_title_is_empty(pipeline_fakes):
-    """A combined job (n_sources=2) still passes an empty title to the script prompt."""
+@pytest.mark.parametrize("n", [1, 2])
+def test_combined_job_prompt_title_is_empty(pipeline_fakes, n):
+    """A combined job passes an empty title to the script prompt, also when only one of
+    its sources could be fetched (n_sources=1)."""
     body = "Combined content here."
     store = _FakeStore()
     job_id = "test-combined"
@@ -129,10 +131,9 @@ def test_combined_job_prompt_title_is_empty(pipeline_fakes):
     job: dict[str, Any] = {
         "id": job_id,
         "format": "podcast",
-        "n_sources": 2,
         "language": "en",
     }
 
-    _run_prompt_title(store, job_id, job, body, "Combined Title - Site", n_sources=2)
+    _run_prompt_title(store, job_id, job, body, "Combined Title - Site", n_sources=n)
 
     assert _capture_script._captured_title == ""  # type: ignore[attr-defined]

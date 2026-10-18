@@ -3259,10 +3259,9 @@ async def _run_from_body(
     # A combined job's working title is its source titles joined with " + "
     # (plus note text): the hosts must not get it as a title to say aloud.
     # The final episode title still comes from the script below.
-    # VOZONDA-20: a single source's title reaches the prompt without its site
-    # suffix ('Daylight saving time - Wikipedia' -> 'Daylight saving time');
-    # n_sources=1 still counts as single-source, only 2+ blanks the title.
-    prompt_title = "" if n_sources and n_sources > 1 else clean_title(title)
+    # A single source's title reaches the prompt without its site suffix
+    # ('Daylight saving time - Wikipedia' -> 'Daylight saving time', #20).
+    prompt_title = "" if n_sources else clean_title(title)
     if fmt == "narration":
         lines, description = await _narration_script(
             body, output_lang, src_lang, store, job_id,
