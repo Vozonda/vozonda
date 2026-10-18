@@ -471,6 +471,18 @@ def _render_feed(request: Request, rows: list, *, self_path: str, key: str | Non
     )
     show_author = htmllib.escape(_setting_str("show.author") or creator_addr or "Vozonda", quote=True)
     show_category = htmllib.escape(_setting_str("show.category") or "Technology", quote=True)
+    # Channel tags Apple Podcasts and Spotify require (#58). itunes:owner only with an e-mail:
+    # the directories send their verification code there.
+    explicit_val = "true" if _setting_str("show.explicit") == "1" else "false"
+    owner_email = _setting_str("show.owner_email")
+    owner_name = _setting_str("show.owner_name") or show_author
+    owner_tag = ""
+    if owner_email:
+        owner_tag = (
+            f"<itunes:owner><itunes:name>{htmllib.escape(owner_name, quote=True)}</itunes:name>"
+            f"<itunes:email>{htmllib.escape(owner_email, quote=True)}</itunes:email></itunes:owner>"
+        )
+    show_language = _setting_str("show.language") or "en"
     rss = (
         '<?xml version="1.0" encoding="UTF-8"?>'
         '<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:podcast="https://podcastindex.org/namespace/1.0">'
@@ -478,8 +490,10 @@ def _render_feed(request: Request, rows: list, *, self_path: str, key: str | Non
         f"<title>{title}</title>"
         f"<link>{htmllib.escape(f'{base}/', quote=True)}</link>"
         f"<description>{show_desc}</description>"
-        "<language>en</language>"
+        f"<language>{htmllib.escape(show_language, quote=True)}</language>"
         f"<itunes:author>{show_author}</itunes:author>"
+        f"{owner_tag}"
+        f"<itunes:explicit>{explicit_val}</itunes:explicit>"
         f"<itunes:category text=\"{show_category}\" />"
         f'<atom:link href="{htmllib.escape(self_url, quote=True)}" rel="self" type="application/rss+xml" />'
         f"<lastBuildDate>{now_rfc}</lastBuildDate>"

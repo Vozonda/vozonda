@@ -82,6 +82,7 @@ def test_feed_xml_matches_expected_output_for_done_jobs(tmp_path, monkeypatch):
         '<description>Vozonda: Sovereign audio overviews. Your voices, your feeds. Open source &amp; private.</description>'
         '<language>en</language>'
         '<itunes:author>Vozonda</itunes:author>'
+        '<itunes:explicit>false</itunes:explicit>'
         '<itunes:category text="Technology" />'
         '<atom:link href="http://testserver/feed.xml" rel="self" type="application/rss+xml" />'
         f'<lastBuildDate>{fixed_now}</lastBuildDate>'
