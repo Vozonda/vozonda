@@ -48,6 +48,10 @@ def test_owner_name_falls_back_to_the_author(client: TestClient) -> None:
 @pytest.mark.parametrize("key, value", [
     ("show.owner_email", "nope"),
     ("show.owner_email", "a@b"),
+    ("show.owner_email", "a@b@example.org"),
+    ("show.owner_email", "a b@example.org"),
+    ("show.owner_email", "a@.org"),
+    ("show.owner_email", "x" * 190 + "@example.org"),
     ("show.explicit", "yes"),
     ("show.language", "German"),
 ])
@@ -60,3 +64,11 @@ def test_empty_values_are_allowed(client: TestClient) -> None:
     ss.set_setting("show.owner_email", "")
     ss.set_setting("show.language", "")
     assert "<language>en</language>" in client.get("/feed.xml").text
+
+
+def test_a_long_hostile_address_is_refused_fast(client: TestClient) -> None:
+    import time
+    start = time.monotonic()
+    with pytest.raises(ValueError):
+        ss.set_setting("show.owner_email", "!@!." + "!." * 50_000)
+    assert time.monotonic() - start < 0.5
