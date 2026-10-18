@@ -68,6 +68,10 @@ SETTING_KEYS = {
     "show.description",
     "show.author",
     "show.category",
+    "show.owner_name",
+    "show.owner_email",
+    "show.explicit",
+    "show.language",
     "player.default_speed",
     "player.default_text_size",
     "player.karaoke",
@@ -335,7 +339,21 @@ _MODEL_ID = re.compile(r"[A-Za-z0-9._-]+(/[A-Za-z0-9._:-]+)+")
 # display names must stay short: they end up in transcript labels and aria text
 _NAME_KEYS = {"voice.a.name", "voice.b.name", "voice.c.name"}
 _NAME_MAX = 24
-_SHOW_TEXT_KEYS = {"show.name": 80, "show.author": 80, "show.category": 60, "show.description": 4000}
+_SHOW_TEXT_KEYS = {"show.name": 80, "show.author": 80, "show.category": 60, "show.description": 4000, "show.owner_name": 80}
+_SHOW_EMAIL_MAX = 200
+_SHOW_LANG_RE = re.compile(r"^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$")
+
+
+def _is_plain_email(v: str) -> bool:
+    """local@domain.tld without spaces or angle brackets. No regex: a pattern for this backtracks
+    polynomially on inputs like '!@!.!.!.' (CodeQL py/polynomial-redos)."""
+    if len(v) > _SHOW_EMAIL_MAX or any(c.isspace() or c in "<>" for c in v):
+        return False
+    local, at, domain = v.partition("@")
+    if not at or not local or "@" in domain:
+        return False
+    name, dot, tld = domain.rpartition(".")
+    return bool(dot and name and tld)
 
 
 def _validate(key: str, value: str) -> str:
@@ -511,6 +529,21 @@ def _validate(key: str, value: str) -> str:
         prop = key.rsplit(".", 1)[-1]
         max_len = {"name": 80, "author": 80, "category": 60, "description": 4000}.get(prop, 4000)
         return value.strip()[:max_len]
+    if key == "show.owner_email":
+        v = value.strip()
+        if v and not _is_plain_email(v):
+            raise ValueError(f"show.owner_email must be a valid email address, got {value[:80]!r}")
+        return v
+    if key == "show.explicit":
+        val = value.strip()
+        if val not in {"0", "1"}:
+            raise ValueError(f"show.explicit must be '0' or '1', got {value!r}")
+        return val
+    if key == "show.language":
+        v = value.strip()
+        if v and not _SHOW_LANG_RE.match(v):
+            raise ValueError(f"show.language must be a valid language tag, got {value!r}")
+        return v
     return value
 
 
