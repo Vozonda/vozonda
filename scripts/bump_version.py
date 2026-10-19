@@ -15,6 +15,7 @@ Usage:
     python3 scripts/bump_version.py patch
     python3 scripts/bump_version.py minor
     python3 scripts/bump_version.py 0.7.5 --sync-website
+    python3 scripts/bump_version.py auto
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ import os
 import re
 import subprocess
 import sys
-from datetime import date
+from datetime import datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -67,6 +68,67 @@ def compute_next_version(current: str, target: str) -> str:
     return target
 
 
+def determine_auto_bump(current: str) -> tuple[str, str]:
+    """Determine version bump from CHANGELOG.md Unreleased section.
+
+    Returns (bump_type, reason) where bump_type is 'patch', 'minor', or 'major'.
+    Raises SystemExit(1) if Unreleased section is empty.
+    """
+    content = CHANGELOG_PATH.read_text(encoding="utf-8")
+
+    # Find the Unreleased section
+    unreleased_match = re.search(r"## \[Unreleased\](.*?)(?=## \[|\Z)", content, re.DOTALL)
+    if not unreleased_match:
+        raise SystemExit("No '## [Unreleased]' section found in CHANGELOG.md")
+
+    unreleased_content = unreleased_match.group(1).strip()
+
+    if not unreleased_content:
+        raise SystemExit("nothing to release")
+
+    # Check for headings
+    has_added = "### Added" in unreleased_content
+    has_changed = "### Changed" in unreleased_content
+    has_removed = "### Removed" in unreleased_content
+    has_fixed = "### Fixed" in unreleased_content
+    has_security = "### Security" in unreleased_content
+    has_breaking = "BREAKING" in unreleased_content
+
+    # Determine current major version
+    major = int(current.split(".")[0])
+
+    # Build reason string
+    reasons = []
+    if has_added:
+        reasons.append("Added")
+    if has_changed:
+        reasons.append("Changed")
+    if has_removed:
+        reasons.append("Removed")
+    if has_fixed:
+        reasons.append("Fixed")
+    if has_security:
+        reasons.append("Security")
+    if has_breaking:
+        reasons.append("BREAKING")
+
+    reason_str = ", ".join(reasons) if reasons else "none"
+
+    # Determine bump type
+    if has_breaking:
+        if major == 0:
+            return "minor", f"BREAKING change at 0.x -> minor ({reason_str})"
+        else:
+            return "major", f"BREAKING change at {major}.x -> major ({reason_str})"
+    elif has_added or has_changed or has_removed:
+        return "minor", f"feature or change entries -> minor ({reason_str})"
+    elif has_fixed or has_security:
+        return "patch", f"only fixes or security entries -> patch ({reason_str})"
+    else:
+        # No recognized headings but content exists
+        return "patch", f"unrecognized content -> patch ({reason_str})"
+
+
 def bump_pyproject(new_ver: str, dry_run: bool) -> None:
     content = PYPROJECT_PATH.read_text(encoding="utf-8")
     updated, n = re.subn(r'version\s*=\s*["\'][^"\']+["\']', f'version = "{new_ver}"', content, count=1)
@@ -97,7 +159,7 @@ def bump_package_json(path: Path, new_ver: str, dry_run: bool) -> None:
 def promote_changelog(new_ver: str, dry_run: bool) -> bool:
     """Promote [Unreleased] section to [new_ver] - YYYY-MM-DD in CHANGELOG.md."""
     content = CHANGELOG_PATH.read_text(encoding="utf-8")
-    today = date.today().isoformat()
+    today = datetime.now().astimezone().date().isoformat()
     # Check if section for new_ver already exists
     if f"## [{new_ver}]" in content:
         return False
@@ -147,25 +209,36 @@ def sync_website_changelog(dry_run: bool) -> bool:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Synchronized version bumper and release tool for Vozonda")
-    parser.add_argument("version", help="Target version (e.g. 0.7.5) or semver bump keyword (patch, minor, major)")
+    parser.add_argument("version", help="Target version (e.g. 0.7.5) or semver bump keyword (patch, minor, major, auto)")
     parser.add_argument("--dry-run", action="store_true", help="Preview changes without writing files")
     parser.add_argument("--sync-website", action="store_true", help="Sync website changelog and trigger deploy")
     parser.add_argument("--tag", action="store_true", help="Create git tag vX.Y.Z after committing")
     args = parser.parse_args()
 
     curr_ver = get_current_version()
-    new_ver = compute_next_version(curr_ver, args.version)
+
+    if args.version == "auto":
+        bump_type, reason = determine_auto_bump(curr_ver)
+        print(f"Auto bump decision: {bump_type} ({reason})")
+        new_ver = compute_next_version(curr_ver, bump_type)
+    else:
+        new_ver = compute_next_version(curr_ver, args.version)
     print(f"Bumping version: {curr_ver} -> {new_ver} (dry_run={args.dry_run})")
 
-    bump_pyproject(new_ver, args.dry_run)
-    bump_version_py(new_ver, args.dry_run)
-    bump_package_json(WEB_PACKAGE_JSON, new_ver, args.dry_run)
-    bump_package_json(NPM_PACKAGE_JSON, new_ver, args.dry_run)
-    promoted = promote_changelog(new_ver, args.dry_run)
-    print(f"Updated manifests and version files for v{new_ver} (changelog promoted: {promoted})")
+    if not args.dry_run:
+        bump_pyproject(new_ver, args.dry_run)
+        bump_version_py(new_ver, args.dry_run)
+        bump_package_json(WEB_PACKAGE_JSON, new_ver, args.dry_run)
+        bump_package_json(NPM_PACKAGE_JSON, new_ver, args.dry_run)
+        promoted = promote_changelog(new_ver, args.dry_run)
+        print(f"Updated manifests and version files for v{new_ver} (changelog promoted: {promoted})")
 
-    if args.sync_website:
-        sync_website_changelog(args.dry_run)
+        if args.sync_website:
+            sync_website_changelog(args.dry_run)
+    else:
+        print("[dry-run] Would update manifests, version files, and promote changelog")
+        if args.sync_website:
+            sync_website_changelog(args.dry_run)
 
 
 if __name__ == "__main__":
