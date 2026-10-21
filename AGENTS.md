@@ -108,8 +108,16 @@ message. Commit style `<scope>: <verb> <object>` (e.g. `web: add waveform seek`)
 Never edit version numbers in isolation. Always use `scripts/bump_version.py`:
 
 ```bash
-python3 scripts/bump_version.py <version|patch|minor|major> [--sync-website]
+python3 scripts/bump_version.py auto [--sync-website]
+python3 scripts/bump_version.py patch|minor|major [--sync-website]
+python3 scripts/bump_version.py X.Y.Z [--sync-website]
 ```
+
+`auto` reads the `## [Unreleased]` section of `CHANGELOG.md` (Keep a Changelog format)
+and picks the bump: `### Added`, `### Changed`, or `### Removed` -> minor; only
+`### Fixed` or `### Security` -> patch; a line containing `BREAKING` -> major at 1.x+,
+minor at 0.x. Use `auto` when cutting a release after a milestone so the version
+reflects the changelog content without manual decision.
 
 When cutting a release or publishing a version:
 1. **Four manifests in lockstep:** `apps/api/pyproject.toml`, `apps/api/src/vozonda_api/version.py`, `apps/web/package.json`, and `packages/npm/package.json` must always carry the exact same version string.
