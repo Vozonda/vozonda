@@ -6,7 +6,7 @@ import json
 import logging
 import uuid
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import aclosing, asynccontextmanager
 from pathlib import Path
 from urllib.parse import quote
 
@@ -1209,10 +1209,14 @@ async def _run(job_id: str, runner=run_job) -> None:
                 await q.put(updated)
 
         try:
-            async for updated in runner(store, job_id):
-                await emit(updated)
-                if updated["state"] in ("done", "failed", "awaiting_review"):
-                    break
+            # aclosing: the break below closes the generator here, in this task's context. Left
+            # suspended, the event loop finalized it later in another context, and run_job's
+            # LOCAL_ONLY.reset(token) raised "created in a different Context" after every render.
+            async with aclosing(runner(store, job_id)) as updates:
+                async for updated in updates:
+                    await emit(updated)
+                    if updated["state"] in ("done", "failed", "awaiting_review"):
+                        break
         except asyncio.CancelledError:
             # Kill all subprocesses for this job (renderer, ffmpeg, etc.)
             await _kill_job_subprocesses(job_id)
