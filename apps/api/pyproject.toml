@@ -1,6 +1,6 @@
 [project]
 name = "vozonda"
-version = "0.7.5"
+version = "0.7.6"
 description = "Vozonda orchestrator: url to two-voice podcast dialogue"
 readme = "README.md"
 license = { text = "MIT" }
