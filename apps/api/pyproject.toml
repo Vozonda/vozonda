@@ -55,6 +55,11 @@ mcp = [
 
 [tool.uv]
 package = true
+# qwen-tts requires gradio only for its demo UI (qwen_tts/cli/demo.py), which Vozonda never
+# imports; gradio caps pillow below 13, which kept ~40 pillow CVEs open (2026-10-25). Dropped.
+override-dependencies = ["gradio; sys_platform == 'never'"]
+# Resolve only for real platforms, so the lock keeps no "never" branch with an old gradio in it.
+environments = ["sys_platform == 'linux'", "sys_platform == 'darwin'", "sys_platform == 'win32'"]
 
 [build-system]
 requires = ["hatchling"]
