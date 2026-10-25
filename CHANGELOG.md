@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.6] - 2026-10-25
 
 ### Fixed
 
@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - api: pillow 12.3.0 to 13.0.0 (about 40 advisories), filelock 3.32.3 to 4.2.4, setuptools 84.2.1, certifi 2026.10.23, opentelemetry-api 1.45.1. gradio is no longer installed: qwen-tts lists it only for its demo UI, which Vozonda never imports, and it capped pillow below 13; brotli and 20 other packages of its tree go with it. transformers stays on 4.57.3 (qwen-tts 0.1.1 pins it) and accelerate on 1.12.0 (pinned the same way; its advisory has no fixed release yet)
+- deps: fastapi 0.144.0 and ruff 0.17.1 in the API (#77); playwright 1.64.1 and svelte-check 4.7.7 in the web UI's dev tools (#76)
 
 ## [0.7.5] - 2026-10-15
 
