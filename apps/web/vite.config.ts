@@ -12,7 +12,7 @@ const API = process.env.VOZONDA_API_PROXY || 'http://127.0.0.1:8787'
 // (apps/api/tests/test_vite_proxy_paths.py enforces it; 2026-10-02 /distribution was missing).
 const API_PATHS = [
   '/audio', '/auth', '/clips', '/doctor', '/e', '/health', '/img', '/jobs', '/llm', '/llms.txt',
-  '/meta', '/music', '/plugins', '/providers', '/settings', '/share', '/shows', '/source', '/sources', '/srt',
+  '/meta', '/music', '/plugins', '/pronunciations', '/providers', '/settings', '/share', '/shows', '/source', '/sources', '/srt',
   '/storage', '/tts', '/vtt', '/watchlist', '/feed.xml', '/docs', '/redoc', '/openapi.json',
   '/distribution', '/billing', '/feed', '/styles', '/og-default.png', '/update-check'
 ]

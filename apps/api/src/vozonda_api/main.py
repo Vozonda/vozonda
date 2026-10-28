@@ -1920,6 +1920,51 @@ async def put_setting(key: str, body: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Pronunciation dictionary (VOZONDA-PRONUNCIATION)
+# ---------------------------------------------------------------------------
+
+class PronunciationEntryIn(BaseModel):
+    """One pronunciation entry."""
+    term: str = Field(min_length=1, max_length=100)
+    say: str = Field(min_length=1, max_length=100)
+    match_case: bool = False
+
+
+class PronunciationListIn(BaseModel):
+    """A list of pronunciation entries (max 500)."""
+    entries: list[PronunciationEntryIn]
+
+
+def _pronunciations_out(key: str) -> list[dict]:
+    raw = get_setting(key)
+    try:
+        return json.loads(raw) if raw else []
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+
+def _save_pronunciations(key: str, body: "PronunciationListIn") -> list[dict]:
+    try:
+        set_setting(key, json.dumps([e.model_dump() for e in body.entries], ensure_ascii=False))
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return _pronunciations_out(key)
+
+
+# Not under /settings/{key}: that generic route is registered first and would take the PUT.
+@app.get("/pronunciations")
+async def get_pronunciations() -> list[dict]:
+    """The global pronunciation dictionary."""
+    return _pronunciations_out("tts.pronunciations")
+
+
+@app.put("/pronunciations", dependencies=[Depends(require_write_auth)])
+async def put_pronunciations(body: PronunciationListIn) -> list[dict]:
+    """Replace the global pronunciation dictionary."""
+    return _save_pronunciations("tts.pronunciations", body)
+
+
+# ---------------------------------------------------------------------------
 # Podcast Shows (#232)
 # ---------------------------------------------------------------------------
 
@@ -2145,6 +2190,27 @@ async def delete_show(slug: str) -> dict:
         logger.info("show %s deleted; its Nostr key file is kept (it is the show's identity)", idx)
 
     return {"deleted": slug}
+
+
+def _show_pronunciation_key(slug: str) -> str:
+    from .routers.feeds import _show_num_for_slug
+
+    num = _show_num_for_slug(slug)
+    if num is None:
+        raise HTTPException(404, "show not found")
+    return f"show.{num}.pronunciations"
+
+
+@app.get("/shows/{slug}/pronunciations")
+async def get_show_pronunciations(slug: str) -> list[dict]:
+    """A show's own pronunciation list, applied after the global one."""
+    return _pronunciations_out(_show_pronunciation_key(slug))
+
+
+@app.put("/shows/{slug}/pronunciations", dependencies=[Depends(require_write_auth)])
+async def put_show_pronunciations(slug: str, body: PronunciationListIn) -> list[dict]:
+    """Replace a show's pronunciation list."""
+    return _save_pronunciations(_show_pronunciation_key(slug), body)
 
 
 class WatchlistIn(BaseModel):

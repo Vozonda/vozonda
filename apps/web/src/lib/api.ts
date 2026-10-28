@@ -479,6 +479,61 @@ export async function saveSetting(key: string, value: string): Promise<void> {
   }
 }
 
+export interface PronunciationEntry {
+  term: string
+  say: string
+  match_case: boolean
+}
+
+/** Get the global pronunciation dictionary. */
+export async function getPronunciations(): Promise<PronunciationEntry[]> {
+  const res = await fetch(`${API_BASE}/pronunciations`)
+  if (!res.ok) {
+    return []
+  }
+  return res.json().catch(() => [])
+}
+
+/** Set (replace) the global pronunciation dictionary. */
+export async function savePronunciations(entries: PronunciationEntry[]): Promise<PronunciationEntry[]> {
+  const res = await fetch(`${API_BASE}/pronunciations`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ entries })
+  })
+  if (!res.ok) {
+    const b = (await res.json().catch(() => ({}))) as { detail?: unknown }
+    throw new Error(typeof b.detail === 'string' ? b.detail : `could not save (HTTP ${res.status})`)
+  }
+  return res.json()
+}
+
+/** Get the pronunciation dictionary for a show. */
+export async function getShowPronunciations(slug: string): Promise<PronunciationEntry[]> {
+  const res = await fetch(`${API_BASE}/shows/${encodeURIComponent(slug)}/pronunciations`)
+  if (!res.ok) {
+    return []
+  }
+  return res.json().catch(() => [])
+}
+
+/** Set (replace) the pronunciation dictionary for a show. */
+export async function saveShowPronunciations(
+  slug: string,
+  entries: PronunciationEntry[]
+): Promise<PronunciationEntry[]> {
+  const res = await fetch(`${API_BASE}/shows/${encodeURIComponent(slug)}/pronunciations`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ entries })
+  })
+  if (!res.ok) {
+    const b = (await res.json().catch(() => ({}))) as { detail?: unknown }
+    throw new Error(typeof b.detail === 'string' ? b.detail : `could not save (HTTP ${res.status})`)
+  }
+  return res.json()
+}
+
 export interface JobSummary {
   id: string
   title: string
