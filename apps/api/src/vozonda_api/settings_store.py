@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 import secrets
@@ -72,6 +73,10 @@ SETTING_KEYS = {
     "show.owner_email",
     "show.explicit",
     "show.language",
+    "show.txt",
+    "show.locked",
+    # {feed path: podcast:guid}, written once per feed by routers/feeds.py
+    "feed.guids",
     "player.default_speed",
     "player.default_text_size",
     "player.karaoke",
@@ -147,6 +152,9 @@ _SHOW_PUBLIC_KEY = re.compile(r"^show\.(?:(?:s)?[0-9]+|default)\.public$")
 # the per-show text properties (name, author, category, description)
 _SHOW_PROP_KEY = re.compile(r"^show\.(?:(?:s)?[0-9]+|default)\.(?:name|author|category|description)$")
 
+# podcast 2.0 identity keys (guid, txt, locked) on per-show settings
+_SHOW_P20_KEY = re.compile(r"^show\.(?:(?:s)?[0-9]+|default)\.(?:txt|locked)$")
+
 
 def _normalize_show_key(key: str) -> str:
     """Normalize show.N.* keys by removing optional 's' prefix from the number.
@@ -185,6 +193,7 @@ def get_setting(key: str) -> Any | None:
         and not _SHOW_RSS_KEY.match(norm_key)
         and not _SHOW_PUBLIC_KEY.match(norm_key)
         and not _SHOW_PROP_KEY.match(norm_key)
+        and not _SHOW_P20_KEY.match(norm_key)
     ):
         raise KeyError(f"unknown setting: {key}")
     if norm_key == "feed.app.address":
@@ -277,6 +286,7 @@ def set_setting(key: str, value: str) -> str:
         and not _SHOW_RSS_KEY.match(norm_key)
         and not _SHOW_PUBLIC_KEY.match(norm_key)
         and not _SHOW_PROP_KEY.match(norm_key)
+        and not _SHOW_P20_KEY.match(norm_key)
     ):
         raise KeyError(f"unknown setting: {key}")
     if norm_key == "feed.app.address" and is_node_v4v_address_locked():
@@ -544,6 +554,34 @@ def _validate(key: str, value: str) -> str:
         if v and not _SHOW_LANG_RE.match(v):
             raise ValueError(f"show.language must be a valid language tag, got {value!r}")
         return v
+    if key == "show.locked" or (_SHOW_P20_KEY.match(key) and key.endswith(".locked")):
+        val = value.strip()
+        if val not in {"0", "1", ""}:
+            raise ValueError(f"{key} must be '0' or '1', got {value!r}")
+        return val
+    if key == "show.txt" or (_SHOW_P20_KEY.match(key) and key.endswith(".txt")):
+        # JSON list of {"purpose": str, "value": str} (podcast:txt; the index's verify token)
+        v = value.strip()
+        if not v:
+            return v
+        try:
+            entries = json.loads(v)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"{key} must be a JSON list of {{purpose, value}}") from exc
+        if not isinstance(entries, list) or len(entries) > 20 or not all(
+                isinstance(e, dict) and isinstance(e.get("value"), str) and len(e["value"]) <= 500
+                and isinstance(e.get("purpose", ""), str) and len(e.get("purpose", "")) <= 64 for e in entries):
+            raise ValueError(f"{key} must be a JSON list of at most 20 {{purpose, value}} entries")
+        return json.dumps(entries)
+    if key == "feed.guids":
+        v = value.strip() or "{}"
+        try:
+            guids = json.loads(v)
+        except json.JSONDecodeError as exc:
+            raise ValueError("feed.guids must be a JSON object") from exc
+        if not isinstance(guids, dict) or not all(isinstance(k, str) and isinstance(g, str) for k, g in guids.items()):
+            raise ValueError("feed.guids must map feed paths to guids")
+        return json.dumps(guids, sort_keys=True)
     return value
 
 

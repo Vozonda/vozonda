@@ -84,6 +84,8 @@ def test_feed_xml_matches_expected_output_for_done_jobs(tmp_path, monkeypatch):
         '<itunes:author>Vozonda</itunes:author>'
         '<itunes:explicit>false</itunes:explicit>'
         '<itunes:category text="Technology" />'
+        # podcast:guid since 2026-10 (UUIDv5 of the feed URL, stored once; test_feed_p20_identity.py)
+        '<podcast:guid>d518cc0b-6eb8-5c11-833f-fc5f93c9fd0a</podcast:guid>'
         '<atom:link href="http://testserver/feed.xml" rel="self" type="application/rss+xml" />'
         f'<lastBuildDate>{fixed_now}</lastBuildDate>'
         '<generator>Vozonda</generator>'

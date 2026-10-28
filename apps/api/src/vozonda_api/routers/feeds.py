@@ -5,6 +5,7 @@ import html as htmllib
 import json
 import logging
 import sqlite3
+from itertools import pairwise
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
@@ -418,6 +419,10 @@ def _feed_item(row: dict, base: str, now_rfc: str, recipients: list[tuple[str, s
     audio_bytes = (meta.get("audio") or {}).get("bytes")
     length = str(audio_bytes) if isinstance(audio_bytes, int) else "0"
     expl_tag = "<itunes:explicit>yes</itunes:explicit>" if row.get("explicit") else ""
+    # Cover image from og_image: only on episodes that have one.
+    # Private episodes carry the key on the image link.
+    og_image = str(row.get("og_image") or "")
+    image_tag = _itunes_image_xml(og_image if og_image else None, item_key_q, base)
     return (
         f"<item><title>{title}</title>"
         f"<link>{page_url}</link>"
@@ -430,12 +435,145 @@ def _feed_item(row: dict, base: str, now_rfc: str, recipients: list[tuple[str, s
         f"{_chapters_xml(row)}"
         f"<pubDate>{pub}</pubDate>"
         f"<enclosure url=\"{audio_url}\" length=\"{length}\" type=\"audio/mpeg\" />"
+        f"{image_tag}"
         f"{dur_tag}</item>"
     )
 
 
+def _p20_key(show_num: str | None, field: str) -> str:
+    """Settings key of a channel value: the default show (whose feed is also the main feed) uses
+    show.<field> like its name and author, every other show show.<num>.<field>."""
+    return f"show.{field}" if show_num in (None, "default") else f"show.{show_num}.{field}"
+
+
+def _compute_guid(feed_url: str, self_path: str) -> str:
+    """podcast:guid of one feed: UUIDv5 (the spec's namespace) over its URL without scheme, query and
+    trailing slash, stored the first time under the feed's path (feed.guids) and from then on read,
+    never recomputed, so it survives a new public address or feed key. Per path, because a show's
+    feed and the feeds of its watchlists are different feeds and need different guids."""
+    import uuid
+
+    try:
+        guids = json.loads(_setting_str("feed.guids") or "{}")
+        if not isinstance(guids, dict):
+            guids = {}
+    except (json.JSONDecodeError, TypeError):
+        logger.warning("feed.guids is not JSON; starting a new map")
+        guids = {}
+    stored = str(guids.get(self_path) or "").strip()
+    if stored:
+        return stored
+    clean = feed_url.split("?", 1)[0].split("://", 1)[-1].rstrip("/")
+    guid = str(uuid.uuid5(uuid.UUID("ead4c236-bf58-58c6-a2c6-a6b28d128cb6"), clean))
+    guids[self_path] = guid
+    try:
+        from ..settings_store import set_setting
+
+        set_setting("feed.guids", json.dumps(guids, sort_keys=True))
+    except Exception:
+        # the feed still renders; without the stored value the guid would follow the next address change
+        logger.warning("could not store the guid of %s", self_path, exc_info=True)
+    return guid
+
+
+def _podcast_txt_xml(show_num: str | None) -> str:
+    """podcast:txt from a JSON list of {"purpose", "value"} (how a show is claimed in the index)."""
+    raw = _setting_str(_p20_key(show_num, "txt"))
+    if not raw:
+        return ""
+    try:
+        entries = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        logger.warning("%s is not JSON; no podcast:txt", _p20_key(show_num, "txt"))
+        return ""
+    if not isinstance(entries, list):
+        return ""
+    parts: list[str] = []
+    for entry in entries:
+        if not isinstance(entry, dict) or not str(entry.get("value") or "").strip():
+            continue
+        purpose = htmllib.escape(str(entry.get("purpose") or "").strip(), quote=True)
+        value = htmllib.escape(str(entry["value"]).strip(), quote=True)
+        attr = f' purpose="{purpose}"' if purpose else ""
+        parts.append(f"<podcast:txt{attr}>{value}</podcast:txt>")
+    return "".join(parts)
+
+
+def _podcast_locked_xml(show_num: str | None) -> str:
+    """podcast:locked: only when the feed is locked and the owner e-mail (one for all shows) is set."""
+    if _setting_str(_p20_key(show_num, "locked")) != "1":
+        return ""
+    owner_email = _setting_str("show.owner_email")
+    if not owner_email:
+        return ""
+    return f'<podcast:locked owner="{htmllib.escape(owner_email, quote=True)}">yes</podcast:locked>'
+
+
+_FREQ = {
+    "daily": ("FREQ=DAILY", "Daily"),
+    "weekly": ("FREQ=WEEKLY", "Weekly"),
+    "biweekly": ("FREQ=WEEKLY;INTERVAL=2", "Every two weeks"),
+    "monthly": ("FREQ=MONTHLY", "Monthly"),
+}
+_FREQ_DAYS = {"daily": 1, "weekly": 7, "biweekly": 14, "monthly": 30}
+
+
+def _podcast_update_frequency(rows: list, show_num: str | None = None, watchlist_id: str = "") -> str:
+    """podcast:updateFrequency: a feed fed by a scheduled watchlist says its schedule; otherwise the
+    gaps between the feed's last five episodes decide (all within 20 % of 1, 7, 14 or 30 days);
+    no clear rhythm or fewer than three episodes: no tag."""
+    label = ""
+    try:
+        from ..watchlist import list_watchlists
+
+        for wl in list_watchlists():
+            if watchlist_id and wl.get("id") != watchlist_id:
+                continue
+            if not watchlist_id and (show_num is None or _watchlist_show_num(wl) != show_num):
+                continue
+            schedule = str(wl.get("schedule") or "").strip().lower()
+            label = "daily" if schedule.startswith("daily") else "weekly" if schedule.startswith("weekly") else ""
+            if label:
+                break
+    except Exception:
+        # no watchlist table yet or a broken row: fall back to the episode gaps below
+        logger.debug("watchlist schedules unreadable for updateFrequency", exc_info=True)
+    if not label:
+        times = sorted(float(dict(r).get("created_at") or 0) for r in rows)
+        times = [t for t in times if t > 0][-5:]
+        gaps = [b - a for a, b in pairwise(times)]
+        if len(gaps) >= 2:
+            for name, days in _FREQ_DAYS.items():
+                ref = days * 86400.0
+                if all(abs(g - ref) <= 0.2 * ref for g in gaps):
+                    label = name
+                    break
+    if not label:
+        return ""
+    rrule, text = _FREQ[label]
+    return f'<podcast:updateFrequency rrule="{rrule}">{text}</podcast:updateFrequency>'
+
+
+def _itunes_image_xml(og_image: str | None, item_key_q: str, base: str) -> str:
+    """itunes:image tag on item level when the episode has cover art.
+
+    On private episodes (item_key_q is set), the image URL carries the key."""
+    if not og_image:
+        return ""
+    # og_image is stored as a filename; if it's a full URL use it as-is
+    if og_image.startswith("http"):
+        url = og_image
+    else:
+        url = f"{base}/img/{og_image}"
+    # Private episodes: image link carries the feed key
+    if item_key_q:
+        url = f"{url}{item_key_q}"
+    return f'<itunes:image href="{htmllib.escape(url, quote=True)}" />'
+
+
 def _render_feed(request: Request, rows: list, *, self_path: str, key: str | None,
-                 show_num: str | None = None, show_title: str | None = None) -> Response:
+                 show_num: str | None = None, show_title: str | None = None,
+                 watchlist_id: str = "") -> Response:
     """One RSS builder for the main feed and the per-show feeds."""
     base = public_base(request)
     creator_addr = _setting_str("feed.creator.address")
@@ -483,6 +621,13 @@ def _render_feed(request: Request, rows: list, *, self_path: str, key: str | Non
             f"<itunes:email>{htmllib.escape(owner_email, quote=True)}</itunes:email></itunes:owner>"
         )
     show_language = _setting_str("show.language") or "en"
+    # Build channel-level Podcast 2.0 identity tags
+    self_url_clean = f"{base}{self_path}"
+    guid_tag = f'<podcast:guid>{_compute_guid(self_url_clean, self_path)}</podcast:guid>'
+    txt_tag = _podcast_txt_xml(show_num)
+    locked_tag = _podcast_locked_xml(show_num)
+    freq_tag = _podcast_update_frequency(rows, show_num, watchlist_id)
+
     rss = (
         '<?xml version="1.0" encoding="UTF-8"?>'
         '<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:podcast="https://podcastindex.org/namespace/1.0">'
@@ -495,6 +640,10 @@ def _render_feed(request: Request, rows: list, *, self_path: str, key: str | Non
         f"{owner_tag}"
         f"<itunes:explicit>{explicit_val}</itunes:explicit>"
         f"<itunes:category text=\"{show_category}\" />"
+        f'{guid_tag}'
+        f'{txt_tag}'
+        f'{locked_tag}'
+        f'{freq_tag}'
         f'<atom:link href="{htmllib.escape(self_url, quote=True)}" rel="self" type="application/rss+xml" />'
         f"<lastBuildDate>{now_rfc}</lastBuildDate>"
         "<generator>Vozonda</generator>"
@@ -581,7 +730,7 @@ async def feed_hierarchical(creator: str, show: str, request: Request, key: str 
         # exact, case-insensitive; the old LIKE let '%' in the URL match every show
         rows = _done_rows(" AND lower(show_name) IN (lower(?), lower(?))", (show, show.replace("-", " ")))
     return _render_feed(
-        request, rows, key=key, show_num=show_num,
+        request, rows, key=key, show_num=show_num, watchlist_id=(watchlist or {}).get("id") or "",
         self_path=f"/{quote(creator, safe='')}/{quote(show, safe='')}/feed.xml",
         show_title=_setting_str("show.name") or show.replace("-", " "),
     )

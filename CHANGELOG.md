@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- feed: Podcasting 2.0 identity. Every feed gets a `podcast:guid` (UUIDv5 of its URL, stored once per feed so it survives a new address or feed key); a show can carry its Podcast Index verification token (`podcast:txt`) to be claimed there, and be marked `podcast:locked`; `podcast:updateFrequency` comes from a watchlist's schedule or the gaps between the last episodes; an episode with its own cover gets it as item artwork (with the feed key on private episodes)
+- settings: per show the index token, the feed guid and a "locked" switch; the default show gets the owner e-mail podcast directories ask for
+
 ## [0.7.6] - 2026-10-25
 
 ### Fixed

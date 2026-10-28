@@ -40,8 +40,9 @@ def _fixed_row():
 # The item guid is base + /e/<job id>; it never contained the product name.
 EXPECTED_GUID = "http://127.0.0.1:8787/e/test-rename-guid-1"
 EXPECTED_GUID_TAG = '<guid isPermaLink="true">http://127.0.0.1:8787/e/test-rename-guid-1</guid>'
-# Pre-rename code emitted no <podcast:guid> channel tag; absence is the stable value.
-EXPECTED_PODCAST_GUID_COUNT = 0
+# Pre-rename code emitted no <podcast:guid>; since 2026-10 the feed carries exactly one, the UUIDv5 of
+# its URL stored once (test_feed_p20_identity.py), and it carries no product name either.
+EXPECTED_PODCAST_GUID_COUNT = 1
 
 
 def test_feed_item_guid_is_byte_identical_to_pre_rename():
