@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - settings: per show the index token, the feed guid and a "locked" switch; the default show gets the owner e-mail podcast directories ask for
 - sources: Vozonda finds a source's Lightning address (HTML meta or link tag, the feed's podcast:value lnaddress recipient or podcast:funding link, or a Nostr author's signed profile) and shows it in the source tray, where it can be set or cleared by hand; only Nostr sources ever trigger a relay lookup.
 - sources: a podcast or RSS feed link is accepted as a source; its show notes become the source text (it was refused before).
+- feed: Podping. With a token from podping.cloud, Vozonda tells podcast apps right away that a public feed has a new episode; private feeds, confidential mode and a local base url never send anything (settings, shows & distribution)
 
 ## [0.7.6] - 2026-10-25
 

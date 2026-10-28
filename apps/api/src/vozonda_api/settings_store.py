@@ -96,6 +96,9 @@ SETTING_KEYS = {
     "distribution.rss_default",
     # Public address setting (VOZONDA-REACH-BACKEND)
     "address.public",
+    "podping.enabled",
+    "podping.token",
+    "podping.last",
 }
 
 
@@ -243,7 +246,7 @@ def get_private_feed_key() -> str:
 
 # Settings that hold credentials: never sent back to a client. GET /settings
 # shows SECRET_MASK instead, and writing the mask back keeps the stored value.
-SECRET_SETTINGS = frozenset({"llm.api_key", "llm.nim_api_key", "feed.private_key"})
+SECRET_SETTINGS = frozenset({"llm.api_key", "llm.nim_api_key", "feed.private_key", "podping.token"})
 SECRET_MASK = "********"
 
 
@@ -530,6 +533,17 @@ def _validate(key: str, value: str) -> str:
         from .public_address import valid_address
 
         return valid_address(value)
+    if key == "podping.enabled":
+        val = value.strip()
+        if val not in {"0", "1"}:
+            raise ValueError(f"podping.enabled must be '0' or '1', got {value!r}")
+        return val
+    if key == "podping.token":
+        # credentials stored raw; validation is handled by SECRET_SETTINGS mask logic
+        return value
+    if key == "podping.last":
+        # JSON object; stored as-is by the pipeline
+        return value
     if _SHOW_PUBLIC_KEY.match(key):
         val = value.strip()
         if val not in {"0", "1"}:

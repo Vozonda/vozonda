@@ -371,6 +371,17 @@
     }
   }
 
+  // podping.last: {url, at (unix s), status} of the newest announcement, written by the API
+  const podpingLast = $derived.by(() => {
+    try {
+      const last = JSON.parse(values['podping.last'] || 'null') as { at?: number; status?: string | number } | null
+      if (!last?.at) return ''
+      return `${new Date(last.at * 1000).toLocaleString()}, ${last.status}`
+    } catch {
+      return '' // nothing recorded yet, or an unreadable value: no line
+    }
+  })
+
   function set(key: string, value: string) {
     values = { ...values, [key]: value }
     if (key === 'llm.api_key') llmApiKey = value
@@ -2220,6 +2231,34 @@
             </button>
           </div>
           <p class="help">appends an "AI-generated: script by X, voices by Y." line to the rss feed, episode page and mp3 ID3 tags.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="podping-h">
+        <div class="sec-head">
+          <h3 id="podping-h" class="mono"><Icon name="radio" size={18} /> podping</h3>
+        </div>
+        <p class="help">podping tells podcast apps right away that a public feed has a new episode. private feeds are never announced, and nothing is sent in confidential mode or while the base url is a local address. get a token at podping.cloud.</p>
+        <div class="opt">
+          <div class="ctl-row">
+            <label class="lab mono" for="s-podping">announce new episodes of public feeds</label>
+            <span class="mono readout">{values['podping.enabled'] === '1' ? 'on' : 'off'}</span>
+          </div>
+          <div id="s-podping" class="seg" role="radiogroup" aria-label="Announce new episodes via Podping">
+            <button type="button" role="radio" aria-checked={values['podping.enabled'] === '1'}
+              class:sel={values['podping.enabled'] === '1'} onclick={() => set('podping.enabled', '1')}>on</button>
+            <button type="button" role="radio" aria-checked={values['podping.enabled'] !== '1'}
+              class:sel={values['podping.enabled'] !== '1'} onclick={() => set('podping.enabled', '0')}>off</button>
+          </div>
+        </div>
+        <div class="opt">
+          <label class="lab mono" for="s-podping-token">token</label>
+          <input id="s-podping-token" class="mono text-in" type="password" autocomplete="off"
+            placeholder="from podping.cloud" value={values['podping.token'] ?? ''}
+            onchange={(e) => set('podping.token', e.currentTarget.value)} />
+          {#if podpingLast}
+            <p class="help mono">last ping: {podpingLast}</p>
+          {/if}
         </div>
       </section>
 
