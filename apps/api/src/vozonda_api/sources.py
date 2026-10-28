@@ -19,6 +19,7 @@ import io
 import logging
 import os
 import re
+import sqlite3
 import time
 import uuid
 from typing import Any
@@ -34,6 +35,7 @@ from .fetcher import (
     fetch_document,
     guard_url,
 )
+from .nostr_profile import lookup_profile
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +82,9 @@ CREATE TABLE IF NOT EXISTS sources (
   error_code TEXT,
   error_hint TEXT,
   created_at REAL NOT NULL,
-  updated_at REAL NOT NULL
+  updated_at REAL NOT NULL,
+  lightning_address TEXT,
+  lightning_address_origin TEXT
 );
 CREATE TABLE IF NOT EXISTS job_sources (
   job_id TEXT NOT NULL,
@@ -131,6 +135,14 @@ class SourceError(Exception):
         self.detail = detail
 
 
+def _migrate_columns(conn: sqlite3.Connection) -> None:
+    """Add the lightning columns to a sources table from before they existed."""
+    have = {r[1] for r in conn.execute("PRAGMA table_info(sources)")}
+    for col in ("lightning_address", "lightning_address_origin"):
+        if col not in have:
+            conn.execute(f"ALTER TABLE sources ADD COLUMN {col} TEXT")
+
+
 def init_sources_db() -> None:
     with _db():
         pass
@@ -141,6 +153,7 @@ def _db():
     cheap, and a job delete must not fail on a DB from before the tray)."""
     conn = jobs_mod._conn()
     conn.executescript(SCHEMA)
+    _migrate_columns(conn)
     return conn
 
 
@@ -158,6 +171,8 @@ def _row(row: Any, with_text: bool = False) -> dict[str, Any]:
     code = d.pop("error_code", None)
     hint = d.pop("error_hint", None)
     d["error"] = {"code": code, "hint": hint, "retryable": ERRORS.get(code, ("", False))[1]} if code else None
+    d["lightning_address"] = d.get("lightning_address")
+    d["lightning_address_origin"] = d.get("lightning_address_origin")
     return d
 
 
@@ -178,17 +193,45 @@ def _insert(kind: str, origin_url: str | None, status: str = "reading") -> str:
     return sid
 
 
-def _set_ready(source_id: str, kind: str, title: str, text: str) -> None:
+def _set_ready(
+    source_id: str,
+    kind: str,
+    title: str,
+    text: str,
+    lightning_address: str | None = None,
+    lightning_address_origin: str | None = None,
+) -> None:
     from .pipeline import detect_source_lang
 
     # pages often leave runs of blank or space-only lines behind (arXiv abstract pages)
     text = re.sub(r"\n[ \t]*(?:\n[ \t]*)+", "\n\n", text).strip()
     with _db() as c:
-        c.execute(
-            "UPDATE sources SET kind = ?, title = ?, text = ?, words = ?, chars = ?, language = ?, status = 'ready', "
-            "error_code = NULL, error_hint = NULL, updated_at = ? WHERE id = ?",
-            (kind, title[:200], text, len(text.split()), len(text), detect_source_lang(text), _now(), source_id),
-        )
+        row = c.execute("SELECT lightning_address_origin FROM sources WHERE id = ?", (source_id,)).fetchone()
+        existing_origin = row["lightning_address_origin"] if row else None
+        if existing_origin == "manual":
+            c.execute(
+                "UPDATE sources SET kind = ?, title = ?, text = ?, words = ?, chars = ?, language = ?, "
+                "status = 'ready', error_code = NULL, error_hint = NULL, updated_at = ? WHERE id = ?",
+                (kind, title[:200], text, len(text.split()), len(text), detect_source_lang(text), _now(), source_id),
+            )
+        else:
+            c.execute(
+                "UPDATE sources SET kind = ?, title = ?, text = ?, words = ?, chars = ?, language = ?, "
+                "status = 'ready', lightning_address = ?, lightning_address_origin = ?, error_code = NULL, "
+                "error_hint = NULL, updated_at = ? WHERE id = ?",
+                (
+                    kind,
+                    title[:200],
+                    text,
+                    len(text.split()),
+                    len(text),
+                    detect_source_lang(text),
+                    lightning_address,
+                    lightning_address_origin,
+                    _now(),
+                    source_id,
+                ),
+            )
 
 
 def _set_failed(source_id: str, code: str) -> None:
@@ -202,6 +245,29 @@ def _set_failed(source_id: str, code: str) -> None:
 def set_title(source_id: str, title: str) -> dict[str, Any] | None:
     with _db() as c:
         c.execute("UPDATE sources SET title = ?, updated_at = ? WHERE id = ?", (title.strip()[:200], _now(), source_id))
+    return get(source_id)
+
+
+def set_lightning_address(source_id: str, address: str | None) -> dict[str, Any] | None:
+    from .nostr_zaps import is_valid_lightning_address
+
+    if address is None or not address.strip():
+        with _db() as c:
+            c.execute(
+                "UPDATE sources SET lightning_address = NULL, lightning_address_origin = NULL, updated_at = ? WHERE id = ?",
+                (_now(), source_id),
+            )
+        return get(source_id)
+
+    cleaned = address.strip()
+    if not is_valid_lightning_address(cleaned):
+        raise ValueError(f"invalid lightning address: {address}")
+
+    with _db() as c:
+        c.execute(
+            "UPDATE sources SET lightning_address = ?, lightning_address_origin = 'manual', updated_at = ? WHERE id = ?",
+            (cleaned, _now(), source_id),
+        )
     return get(source_id)
 
 
@@ -275,8 +341,168 @@ def _check_text(text: str) -> str:
     return text
 
 
-async def read_url(url: str) -> tuple[str, str, str]:
-    """(kind, title, text) for a link. The kind is what the server actually sent."""
+# --- lightning address detection --------------------------------------------
+
+
+def detect_html_lightning_address(html: str) -> tuple[str | None, str | None]:
+    """Detect lightning address from HTML meta or link tags. First valid hit wins."""
+    from .nostr_zaps import is_valid_lightning_address
+
+    # 1. <meta name="lightning" content="..."> or property="lightning"
+    meta_m = re.search(
+        r'<meta\b[^>]*\b(?:name|property)=["\']lightning["\'][^>]*\bcontent=["\']([^"\']+)["\']',
+        html,
+        re.IGNORECASE,
+    )
+    if not meta_m:
+        meta_m = re.search(
+            r'<meta\b[^>]*\bcontent=["\']([^"\']+)["\'][^>]*\b(?:name|property)=["\']lightning["\']',
+            html,
+            re.IGNORECASE,
+        )
+    if meta_m:
+        cand = meta_m.group(1).strip()
+        if cand.lower().startswith("lightning:"):
+            cand = cand[10:].strip()
+        if is_valid_lightning_address(cand):
+            return cand, "detected:html_meta"
+
+    # 2. <link rel="lightning" href="lightning:...">
+    link_m = re.search(
+        r'<link\b[^>]*\brel=["\']lightning["\'][^>]*\bhref=["\']([^"\']+)["\']',
+        html,
+        re.IGNORECASE,
+    )
+    if not link_m:
+        link_m = re.search(
+            r'<link\b[^>]*\bhref=["\']([^"\']+)["\'][^>]*\brel=["\']lightning["\']',
+            html,
+            re.IGNORECASE,
+        )
+    if link_m:
+        cand = link_m.group(1).strip()
+        if cand.lower().startswith("lightning:"):
+            cand = cand[10:].strip()
+        if is_valid_lightning_address(cand):
+            return cand, "detected:html_link"
+
+    return None, None
+
+
+def detect_rss_lightning_address(xml_text: str) -> tuple[str | None, str | None]:
+    """Detect lightning address from podcast:value (lnaddress) or podcast:funding."""
+    from .nostr_zaps import is_valid_lightning_address
+
+    try:
+        import xml.etree.ElementTree as ET
+
+        root = ET.fromstring(xml_text.encode("utf-8") if isinstance(xml_text, str) else xml_text)
+        # 1. podcast:value recipient of type lnaddress
+        for el in root.iter():
+            tag = el.tag.split("}")[-1].lower() if "}" in el.tag else el.tag.lower()
+            if tag in ("valuerecipient", "recipient") and el.get("type", "").lower() == "lnaddress":
+                addr = (el.get("address") or el.text or "").strip()
+                if addr.lower().startswith("lightning:"):
+                    addr = addr[10:].strip()
+                if is_valid_lightning_address(addr):
+                    return addr, "detected:podcast_value"
+        # 2. podcast:funding with lightning: URL
+        for el in root.iter():
+            tag = el.tag.split("}")[-1].lower() if "}" in el.tag else el.tag.lower()
+            if tag == "funding":
+                url_val = (el.get("url") or el.text or "").strip()
+                if url_val.lower().startswith("lightning:"):
+                    addr = url_val[10:].strip()
+                    if is_valid_lightning_address(addr):
+                        return addr, "detected:podcast_funding"
+    except Exception:
+        logger.debug("XML parse in detect_rss_lightning_address failed", exc_info=True)
+
+    # Regex fallbacks in case of non-standard or fragmented XML
+    m_val = re.search(
+        r'<[^>]*:valueRecipient\b[^>]*\btype=["\']lnaddress["\'][^>]*\baddress=["\']([^"\']+)["\']',
+        xml_text,
+        re.IGNORECASE,
+    )
+    if not m_val:
+        m_val = re.search(
+            r'<[^>]*:valueRecipient\b[^>]*\baddress=["\']([^"\']+)["\'][^>]*\btype=["\']lnaddress["\']',
+            xml_text,
+            re.IGNORECASE,
+        )
+    if m_val:
+        cand = m_val.group(1).strip()
+        if cand.lower().startswith("lightning:"):
+            cand = cand[10:].strip()
+        if is_valid_lightning_address(cand):
+            return cand, "detected:podcast_value"
+
+    m_fund = re.search(
+        r'<[^>]*:funding\b[^>]*\burl=["\']lightning:([^"\']+)["\']',
+        xml_text,
+        re.IGNORECASE,
+    )
+    if not m_fund:
+        m_fund = re.search(
+            r'<[^>]*:funding[^>]*>\s*lightning:([^<\s]+)\s*<',
+            xml_text,
+            re.IGNORECASE,
+        )
+    if m_fund:
+        cand = m_fund.group(1).strip()
+        if is_valid_lightning_address(cand):
+            return cand, "detected:podcast_funding"
+
+    return None, None
+
+
+async def detect_nostr_lightning_address(url: str) -> tuple[str | None, str | None]:
+    """Detect lightning address from a Nostr source via author kind 0 profile."""
+    from .nostr_zaps import is_valid_lightning_address
+
+    try:
+        profile = await lookup_profile(url)
+        if profile and isinstance(profile, dict):
+            lud16 = profile.get("lud16")
+            if isinstance(lud16, str):
+                cleaned = lud16.strip()
+                if is_valid_lightning_address(cleaned):
+                    return cleaned, "detected:nostr_profile"
+    except Exception:
+        logger.debug("nostr lightning detection failed for %s", url, exc_info=True)
+    return None, None
+
+
+async def detect_lightning_address(url: str, content: str) -> tuple[str | None, str | None]:
+    """Detect lightning address from a fetched source. First hit wins, nothing invented.
+
+    1. Nostr source: author kind 0 profile lud16 (the only case that contacts a relay)
+    2. HTML page: <meta name="lightning" content> (or property) or <link rel="lightning" href="lightning:...">
+    3. RSS/podcast source: podcast:value recipient type lnaddress, or podcast:funding with lightning: URL
+    """
+    try:
+        # Nostr source
+        if url.startswith("nostr:") or "njump.me" in url or re.search(r"\b(npub1|nprofile1|nevent1)\b", url):
+            addr, origin = await detect_nostr_lightning_address(url)
+            if addr:
+                return addr, origin
+
+        # HTML page tags
+        addr, origin = detect_html_lightning_address(content)
+        if addr:
+            return addr, origin
+
+        # RSS/podcast tags
+        addr, origin = detect_rss_lightning_address(content)
+        if addr:
+            return addr, origin
+    except Exception:
+        logger.debug("lightning address detection failed for %s", url, exc_info=True)
+    return None, None
+
+
+async def read_url(url: str) -> tuple[str, str, str, str | None, str | None]:
+    """(kind, title, text, ln_addr, ln_origin) for a link. The kind is what the server actually sent."""
     from urllib.parse import urlparse
 
     from .audio_source import extract_existing_transcript, transcribe_audio
@@ -293,7 +519,7 @@ async def read_url(url: str) -> tuple[str, str, str]:
         if existing:
             text = existing
         text = _check_text(text)
-        return "audio", title, text
+        return "audio", title, text, None, None
 
     kind, content = await fetch_document(url)
 
@@ -304,15 +530,23 @@ async def read_url(url: str) -> tuple[str, str, str]:
         if existing:
             text = existing
         text = _check_text(text)
-        return "audio", title, text
+        return "audio", title, text, None, None
+
+    # Detect lightning address from raw fetched content
+    ln_addr, ln_origin = None, None
+    try:
+        raw_text = content if isinstance(content, str) else content.decode("utf-8", errors="ignore")
+        ln_addr, ln_origin = await detect_lightning_address(url, raw_text)
+    except Exception:
+        logger.debug("lightning address detection failed for %s", url, exc_info=True)
 
     if kind == "article":
         title, body, _og = await _extract(url, html=content, max_chars=None)
-        return kind, title or url, _check_text(body)
+        return kind, title or url, _check_text(body), ln_addr, ln_origin
     text = _check_text(content)
     if kind == "youtube":
-        return kind, _first_line_title(text, "YouTube video"), text
-    return kind, _text_title(text, f"{kind} document"), text
+        return kind, _first_line_title(text, "YouTube video"), text, ln_addr, ln_origin
+    return kind, _text_title(text, f"{kind} document"), text, ln_addr, ln_origin
 
 
 def sniff(data: bytes) -> str | None:
@@ -348,8 +582,8 @@ def _normalize_image(data: bytes) -> tuple[bytes, str]:
     return out.getvalue(), "image/jpeg"
 
 
-async def read_upload(data: bytes) -> tuple[str, str, str]:
-    """(kind, title, text) for an uploaded file. The bytes stay in memory only.
+async def read_upload(data: bytes) -> tuple[str, str, str, None, None]:
+    """(kind, title, text, None, None) for an uploaded file: an upload has no lightning address. The bytes stay in memory only.
 
     Accepted file types: PDF, PNG, JPEG, WebP, plain text (UTF-8), and audio
     in MP3 (with ID3 tags or bare MPEG frames), M4A, WAV, OGG (Vorbis/Opus),
@@ -370,27 +604,27 @@ async def read_upload(data: bytes) -> tuple[str, str, str]:
         if existing:
             text = existing
         text = _check_text(text)
-        return "audio", title, text
+        return "audio", title, text, None, None
     if ftype is None:
         raise SourceError("unsupported_type")
     if ftype == "pdf":
         text = _check_text(await asyncio.to_thread(_extract_pdf_text, data))
-        return "pdf", _text_title(text, "uploaded PDF"), text
+        return "pdf", _text_title(text, "uploaded PDF"), text, None, None
     if ftype in ("png", "jpeg", "webp"):
         try:
             img, ctype = await asyncio.to_thread(_normalize_image, data)
         except Exception as exc:
             raise SourceError("unsupported_type", str(exc)) from exc
         text = _check_text(await _extract_image_text(img, ctype))
-        return "image", _text_title(text, "uploaded image"), text
+        return "image", _text_title(text, "uploaded image"), text, None, None
     text = _check_text(data.decode("utf-8"))
-    return "file-text", _first_line_title(text, "uploaded text"), text
+    return "file-text", _first_line_title(text, "uploaded text"), text, None, None
 
 
 async def _run_read(source_id: str, reader) -> None:
     try:
-        kind, title, text = await asyncio.wait_for(reader, READ_TIMEOUT_S)
-        _set_ready(source_id, kind, title, text)
+        kind, title, text, ln_addr, ln_origin = await asyncio.wait_for(reader, READ_TIMEOUT_S)
+        _set_ready(source_id, kind, title, text, ln_addr, ln_origin)
     except Exception as exc:
         code = classify(exc)
         logger.info("source %s failed: %s (%s)", source_id, code, exc)

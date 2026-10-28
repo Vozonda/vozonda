@@ -1447,6 +1447,11 @@ class SourceTitleIn(BaseModel):
     title: str = Field(min_length=1, max_length=200)
 
 
+class SourceUpdateIn(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    lightning_address: str | None = None
+
+
 def _source_or_404(source_id: str) -> dict:
     from . import sources as sources_mod
 
@@ -1517,12 +1522,20 @@ async def get_source(source_id: str) -> dict:
 
 
 @app.patch("/sources/{source_id}", dependencies=[Depends(require_write_auth)])
-async def rename_source(source_id: str, body: SourceTitleIn) -> dict:
-    """Edit the title, e.g. before an upload's title shows up in public show notes."""
+async def rename_source(source_id: str, body: SourceUpdateIn) -> dict:
+    """Edit the title (e.g. before an upload's title shows up in public show notes) and/or the
+    lightning address of a source; an empty address clears it."""
     from . import sources as sources_mod
 
     _source_or_404(source_id)
-    return sources_mod.set_title(source_id, body.title)  # type: ignore[return-value]
+    if "title" in body.model_fields_set and body.title is not None:
+        sources_mod.set_title(source_id, body.title)
+    if "lightning_address" in body.model_fields_set:
+        try:
+            sources_mod.set_lightning_address(source_id, body.lightning_address)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+    return sources_mod.get(source_id)  # type: ignore[return-value]
 
 
 @app.post("/sources/{source_id}/retry", status_code=202, dependencies=[Depends(require_write_auth)])
