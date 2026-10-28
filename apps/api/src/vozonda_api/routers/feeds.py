@@ -658,7 +658,7 @@ def _render_feed(request: Request, rows: list, *, self_path: str, key: str | Non
     # of an episode created in the same second, so the next request got a new
     # ETag (flaky test_show_feed_etag_is_stable, 2026-09-25).
     stable = rss.replace(f"<lastBuildDate>{now_rfc}</lastBuildDate>", "", 1)
-    etag = f'"{hashlib.md5(stable.encode()).hexdigest()}"'
+    etag = f'"{hashlib.sha256(stable.encode()).hexdigest()}"'
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=304, headers={"ETag": etag})
     return Response(content=rss, media_type="application/rss+xml", headers={"ETag": etag})
