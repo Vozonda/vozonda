@@ -32,6 +32,7 @@ from .length import (
     word_budget,
 )
 from .nostr_orchestrator import publish_job as _publish_job
+from .podping import ping_job as _podping_job
 from .providers import HF_HOME, LOCAL_ONLY, MEDIA_DIR, TTS_PY, llm_chain, tts_fallbacks
 from .providers.script import script_call, with_thinking_off
 from .rhythm import rhythm_problems_for
@@ -2499,6 +2500,8 @@ async def _run_research_job(
     finished = store.finish(job_id)
     # Nostr publish as background task (VOZONDA-NOSTR-2): never blocks or changes job state
     _spawn_background(_publish_job(job_id))
+    # Podping: announce public feed has a new episode
+    _spawn_background(_podping_job(job_id))
     yield finished
 
 
@@ -2850,6 +2853,8 @@ async def _run_digest_inner(
     finished = store.finish(job_id)
     # Nostr publish as background task (VOZONDA-NOSTR-2): never blocks or changes job state
     _spawn_background(_publish_job(job_id))
+    # Podping: announce public feed has a new episode
+    _spawn_background(_podping_job(job_id))
     yield finished
 
 
@@ -3146,6 +3151,8 @@ async def _finish_from_script(
     finished = store.finish(job_id)
     # Nostr publish as background task (VOZONDA-NOSTR-2): never blocks or changes job state
     _spawn_background(_publish_job(job_id))
+    # Podping: announce public feed has a new episode
+    _spawn_background(_podping_job(job_id))
     yield finished
 
 
