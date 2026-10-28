@@ -339,6 +339,38 @@
     }
   }
 
+  // Podcasting 2.0 channel values per show (podcast:txt verify token, podcast:locked); the default show
+  // uses show.<field> like its name, every other show show.<n>.<field>
+  function p20Key(show: { slug: string; fixed?: boolean }, field: 'txt' | 'locked'): string {
+    return show.fixed ? `show.${field}` : `show.${show.slug.replace(/^s/, '')}.${field}`
+  }
+  type TxtEntry = { purpose?: string; value?: string }
+  function txtList(key: string): TxtEntry[] {
+    try {
+      const list: unknown = JSON.parse(values[key] || '[]')
+      return Array.isArray(list) ? (list as TxtEntry[]) : []
+    } catch {
+      return [] // a broken value shows as empty; saving writes a valid list again
+    }
+  }
+  function verifyToken(key: string): string {
+    return txtList(key).find((e) => e.purpose === 'verify')?.value ?? ''
+  }
+  function setVerifyToken(key: string, token: string) {
+    const rest = txtList(key).filter((e) => e.purpose !== 'verify')
+    set(key, JSON.stringify(token.trim() ? [...rest, { purpose: 'verify', value: token.trim() }] : rest))
+  }
+  // podcast:guid of a feed, written once by the API under the feed's path (settings feed.guids)
+  function feedGuid(feedUrl: string | undefined): string {
+    if (!feedUrl) return ''
+    try {
+      const guids = JSON.parse(values['feed.guids'] || '{}') as Record<string, string>
+      return guids[new URL(feedUrl).pathname] ?? ''
+    } catch {
+      return '' // no guid yet: it appears after the feed is first opened
+    }
+  }
+
   function set(key: string, value: string) {
     values = { ...values, [key]: value }
     if (key === 'llm.api_key') llmApiKey = value
@@ -1858,6 +1890,9 @@
                     <label class="lab mono" for="s-show-category">category</label>
                     <input id="s-show-category" class="mono text-in" type="text" maxlength="60" placeholder="Technology"
                       value={values['show.category']} onchange={(e) => set('show.category', e.currentTarget.value)} />
+                    <label class="lab mono" for="s-show-owner-email">owner e-mail</label>
+                    <input id="s-show-owner-email" class="mono text-in" type="email" maxlength="200" placeholder="for podcast directories"
+                      value={values['show.owner_email']} onchange={(e) => set('show.owner_email', e.currentTarget.value)} />
                     <label class="lab mono desc-lab" for="s-show-desc">description</label>
                     <textarea id="s-show-desc" class="mono text-in desc-ta" rows="3" maxlength="4000" spellcheck="false"
                       placeholder="what your show is about" value={values['show.description']}
@@ -1898,6 +1933,27 @@
                       </button>
                     </div>
                   </div>
+                {/if}
+
+                {#if show.feed_url}
+                  {@const txtKey = p20Key(show, 'txt')}
+                  {@const lockedKey = p20Key(show, 'locked')}
+                  {@const guid = feedGuid(show.feed_url)}
+                  <div class="show-fields index-fields">
+                    <label class="lab mono" for={`s-${show.slug}-verify`}>index token</label>
+                    <input id={`s-${show.slug}-verify`} class="mono text-in" type="text" maxlength="500" spellcheck="false"
+                      placeholder="from podcastindex.org, to claim this show" value={verifyToken(txtKey)}
+                      onchange={(e) => setVerifyToken(txtKey, e.currentTarget.value)} />
+                    {#if guid}
+                      <span class="lab mono">feed guid</span>
+                      <code class="feed-url-code mono">{guid}</code>
+                    {/if}
+                  </div>
+                  <label class="toggle-label mono">
+                    <input type="checkbox" checked={values[lockedKey] === '1'}
+                      onchange={(e) => set(lockedKey, e.currentTarget.checked ? '1' : '0')} />
+                    <span>locked: asks other hosts not to import this feed; needs the owner e-mail</span>
+                  </label>
                 {/if}
 
                 {#if !show.fixed && show.nostr === '1'}
