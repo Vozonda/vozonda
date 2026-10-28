@@ -6,6 +6,7 @@
     uploadSource,
     getSource,
     updateSourceTitle,
+    updateSourceLightning,
     retrySource,
     deleteSource,
     type SourceItem,
@@ -40,6 +41,8 @@
 
   let editingId = $state<string | null>(null)
   let editTitleDraft = $state('')
+  // per source: the server's reason a lightning address was refused
+  let lnErrors = $state<Record<string, string>>({})
   let confirmBypassFailures = $state(false)
   let sourceInputComp = $state<SourceInput | null>(null)
 
@@ -195,6 +198,22 @@
       } catch {
         // keep old title on error
       }
+    }
+  }
+
+  async function handleUpdateLightning(source: SourceItem, input: HTMLInputElement) {
+    const cleaned = input.value.trim()
+    try {
+      const updated = await updateSourceLightning(source.id, cleaned || null)
+      sources = sources.map((s) => (s.id === source.id ? { ...updated, role: s.role || 'main' } : s))
+      syncStorage()
+      const rest = { ...lnErrors }
+      delete rest[source.id]
+      lnErrors = rest
+    } catch (e) {
+      // the stored address stays; the input shows it again and the reason is shown next to it
+      lnErrors = { ...lnErrors, [source.id]: e instanceof Error ? e.message : String(e) }
+      input.value = source.lightning_address || ''
     }
   }
 
@@ -401,6 +420,27 @@
                 {#if s.language}
                   <span class="sep">·</span>
                   <span class="lang-tag">{s.language}</span>
+                {/if}
+              </div>
+              <div class="source-ln-row mono">
+                <span class="ln-label">Lightning:</span>
+                <span class="ln-val" class:empty-ln={!s.lightning_address}>
+                  {s.lightning_address || 'No Lightning address found'}
+                </span>
+                <input
+                  type="text"
+                  class="ln-input mono"
+                  placeholder="edit address"
+                  value={s.lightning_address || ''}
+                  onchange={(e) => void handleUpdateLightning(s, e.currentTarget)}
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter') e.currentTarget.blur()
+                  }}
+                  aria-label="Edit Lightning address"
+                  disabled={busy}
+                />
+                {#if lnErrors[s.id]}
+                  <span class="ln-error" role="alert">{lnErrors[s.id]}</span>
                 {/if}
               </div>
             {/if}
@@ -701,6 +741,54 @@
 
   .lang-tag {
     text-transform: uppercase;
+  }
+
+  .source-ln-row {
+    font-size: calc(var(--ui-size) * 0.82);
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-top: 2px;
+    flex-wrap: wrap;
+  }
+
+  .ln-label {
+    color: var(--ink-soft);
+  }
+
+  .ln-val {
+    color: var(--ink);
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ln-error {
+    color: var(--danger);
+  }
+
+  .ln-val.empty-ln {
+    color: var(--ink-soft);
+    opacity: 0.8;
+  }
+
+  .ln-input {
+    font-size: calc(var(--ui-size) * 0.78);
+    font-family: var(--font-mono);
+    padding: 2px 6px;
+    background: var(--paper);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    outline: none;
+    max-width: 180px;
+    box-sizing: border-box;
+  }
+
+  .ln-input:focus {
+    border-color: var(--ink-soft);
   }
 
   .tray-footer {

@@ -57,13 +57,17 @@ TEXT_TYPES = (
     "audio/wav",
     "audio/ogg",
     "audio/opus",
+    "text/xml",
+    "application/xml",
+    "application/rss+xml",
+    "application/atom+xml",
 )
 
 YOUTUBE_REGEX = re.compile(
     r"(?:youtube\.com/(?:watch\?v=|shorts/|embed/|v/)|youtu\.be/)([a-zA-Z0-9_-]{11})"
 )
-NOSTR_SCHEME_REGEX = re.compile(r"^nostr:(n(?:event|addr|ote|pub)1[a-z0-9]+)", re.IGNORECASE)
-NOSTR_GATEWAY_REGEX = re.compile(r"https?://(?:njump\.me|habla\.news/a|coracle\.social|snort\.social/e|primal\.net/e)/(n(?:event|addr|ote|pub)1[a-z0-9]+)", re.IGNORECASE)
+NOSTR_SCHEME_REGEX = re.compile(r"^nostr:(n(?:event|addr|ote|pub|profile)1[a-z0-9]+)", re.IGNORECASE)
+NOSTR_GATEWAY_REGEX = re.compile(r"https?://(?:njump\.me|habla\.news/a|coracle\.social|snort\.social/e|primal\.net/e)/(n(?:event|addr|ote|pub|profile)1[a-z0-9]+)", re.IGNORECASE)
 YTDLP_TIMEOUT = 30.0
 
 

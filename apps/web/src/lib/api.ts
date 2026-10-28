@@ -299,6 +299,8 @@ export interface SourceItem {
   preview?: string
   error?: SourceError | null
   role?: SourceRole
+  lightning_address?: string | null
+  lightning_address_origin?: string | null
   created_at: number
   updated_at: number
 }
@@ -359,6 +361,23 @@ export async function updateSourceTitle(sourceId: string, title: string): Promis
     body: JSON.stringify({ title })
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return (await res.json()) as SourceItem
+}
+
+export async function updateSourceLightning(sourceId: string, lightningAddress: string | null): Promise<SourceItem> {
+  const res = await fetch(`${API_BASE}/sources/${sourceId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lightning_address: lightningAddress })
+  })
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`
+    try {
+      const b = await res.json()
+      if (b?.detail) detail = typeof b.detail === 'string' ? b.detail : JSON.stringify(b.detail)
+    } catch { void detail }
+    throw new Error(detail)
+  }
   return (await res.json()) as SourceItem
 }
 

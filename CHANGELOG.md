@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - feed: Podcasting 2.0 identity. Every feed gets a `podcast:guid` (UUIDv5 of its URL, stored once per feed so it survives a new address or feed key); a show can carry its Podcast Index verification token (`podcast:txt`) to be claimed there, and be marked `podcast:locked`; `podcast:updateFrequency` comes from a watchlist's schedule or the gaps between the last episodes; an episode with its own cover gets it as item artwork (with the feed key on private episodes)
 - settings: per show the index token, the feed guid and a "locked" switch; the default show gets the owner e-mail podcast directories ask for
+- sources: Vozonda finds a source's Lightning address (HTML meta or link tag, the feed's podcast:value lnaddress recipient or podcast:funding link, or a Nostr author's signed profile) and shows it in the source tray, where it can be set or cleared by hand; only Nostr sources ever trigger a relay lookup.
+- sources: a podcast or RSS feed link is accepted as a source; its show notes become the source text (it was refused before).
 
 ## [0.7.6] - 2026-10-25
 
