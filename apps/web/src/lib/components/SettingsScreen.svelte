@@ -6,6 +6,7 @@
   import CustomStyleEditor from './CustomStyleEditor.svelte'
   import AddressCard from './AddressCard.svelte'
   import ReachCard, { type ReachTarget } from './ReachCard.svelte'
+  import PronunciationCard from './PronunciationCard.svelte'
   import {
     getSettings,
     getStorageStats,
@@ -1767,6 +1768,13 @@
           </div>
         {/if}
       </section>
+
+      <section aria-labelledby="pronunciation-h">
+        <div class="sec-head">
+          <h3 id="pronunciation-h" class="mono"><Icon name="voices" size={18} /> pronunciation</h3>
+        </div>
+        <PronunciationCard />
+      </section>
     </div>
 
     <!-- SECTION 4: SHOWS & DISTRIBUTION (each show with its identity and reach; operator 2026-10-02) -->
@@ -1927,6 +1935,8 @@
                       onchange={(e) => saveShow(show, { description: e.currentTarget.value })}></textarea>
                   </div>
                 {/if}
+
+                <PronunciationCard slug={show.slug} inShow={true} />
 
                 {#if dist}
                   <ReachCard {show} address={dist.address} busy={reachBusy === show.slug}

@@ -83,6 +83,7 @@ SETTING_KEYS = {
     "player.chapters",
     "player.autoscroll",
     "player.boost_placement",
+    "tts.pronunciations",
     "disclosure.ai_label",
     # "0" turns off the check for new releases (updates.py)
     "update.check",
@@ -157,6 +158,10 @@ _SHOW_PROP_KEY = re.compile(r"^show\.(?:(?:s)?[0-9]+|default)\.(?:name|author|ca
 
 # podcast 2.0 identity keys (guid, txt, locked) on per-show settings
 _SHOW_P20_KEY = re.compile(r"^show\.(?:(?:s)?[0-9]+|default)\.(?:txt|locked)$")
+# the per-show pronunciation list
+_SHOW_PRONUNCIATION_KEY = re.compile(
+    r"^show\.(?:(?:s)?[0-9]+|default)\.pronunciations$"
+)
 
 
 def _normalize_show_key(key: str) -> str:
@@ -197,6 +202,7 @@ def get_setting(key: str) -> Any | None:
         and not _SHOW_PUBLIC_KEY.match(norm_key)
         and not _SHOW_PROP_KEY.match(norm_key)
         and not _SHOW_P20_KEY.match(norm_key)
+        and not _SHOW_PRONUNCIATION_KEY.match(norm_key)
     ):
         raise KeyError(f"unknown setting: {key}")
     if norm_key == "feed.app.address":
@@ -290,6 +296,7 @@ def set_setting(key: str, value: str) -> str:
         and not _SHOW_PUBLIC_KEY.match(norm_key)
         and not _SHOW_PROP_KEY.match(norm_key)
         and not _SHOW_P20_KEY.match(norm_key)
+        and not _SHOW_PRONUNCIATION_KEY.match(norm_key)
     ):
         raise KeyError(f"unknown setting: {key}")
     if norm_key == "feed.app.address" and is_node_v4v_address_locked():
@@ -596,6 +603,22 @@ def _validate(key: str, value: str) -> str:
         if not isinstance(guids, dict) or not all(isinstance(k, str) and isinstance(g, str) for k, g in guids.items()):
             raise ValueError("feed.guids must map feed paths to guids")
         return json.dumps(guids, sort_keys=True)
+    if key == "tts.pronunciations" or _SHOW_PRONUNCIATION_KEY.match(key):
+        # pronunciation list: JSON array of entries
+        # { "term": str, "say": str, "match_case": bool }
+        try:
+            parsed = json.loads(value) if value else None
+        except (json.JSONDecodeError, TypeError):
+            parsed = None
+        from .pronunciation import validate_entries
+
+        validated = validate_entries(parsed)
+        if validated is None:
+            raise ValueError(
+                "tts.pronunciations must be a JSON array of "
+                "entries with 'term' and 'say' (max 500 entries)"
+            )
+        return json.dumps(validated, ensure_ascii=False)
     return value
 
 

@@ -1790,6 +1790,23 @@ async def _voice(
     language: str = "auto",
     style: str = "balanced",
 ) -> Path:
+    # Resolve pronunciation dictionary once so both local and cloud paths
+    # receive the same transformed text.  The original ``lines`` list is
+    # never mutated (the renderer, transcript and captions stay clean).
+    try:
+        from .pronunciation import (
+            apply_pronunciations_segments,
+            entries_from_global_and_show,
+        )
+        from .routers.feeds import _job_show_num
+        from .settings_store import get_setting as _gs
+
+        show_num = _job_show_num(store.get(job_id) or {})
+        pronunciations = entries_from_global_and_show(_gs, show_num=show_num)
+        lines = apply_pronunciations_segments(lines, pronunciations)
+    except Exception:
+        logger.debug("pronunciation lookup failed, using raw text", exc_info=True)
+
     try:
         return await _voice_local(
             store, job_id, lines, workdir, fmt=fmt, language=language, style=style
@@ -1987,6 +2004,7 @@ async def _voice_local(
         )
     except Exception:
         logger.warning("voice map meta write failed for job %s", job_id, exc_info=True)
+
     cfg = {
         "segments": lines,
         "voices": voices,
