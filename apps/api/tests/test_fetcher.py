@@ -1,7 +1,11 @@
 """Unit tests for the hardened fetcher (no real network needed)."""
 
+import socket
+
+import httpx
 import pytest
 
+from vozonda_api import fetcher
 from vozonda_api.fetcher import (
     FetchError,
     _host_is_private,
@@ -174,3 +178,76 @@ async def test_extract_opengraph_image():
     assert title == "Test Article"
     assert og_image == "https://example.com/cover.jpg"
     assert "Article body" in body
+
+# The connection goes to the address that was checked (DNS rebinding)
+
+
+def _resolver(*answers):
+    """A getaddrinfo stand-in that answers each call with the next address (the last one repeats)."""
+    calls = []
+
+    def fake(host, port, *args, **kwargs):
+        addr = answers[min(len(calls), len(answers) - 1)]
+        calls.append(host)
+        family = socket.AF_INET6 if ":" in addr else socket.AF_INET
+        return [(family, socket.SOCK_STREAM, 6, "", (addr, port or 0))]
+
+    return fake, calls
+
+
+def _pinned_client(monkeypatch, *answers, seen=None):
+    fake, calls = _resolver(*answers)
+    monkeypatch.setattr(fetcher.socket, "getaddrinfo", fake)
+
+    def handler(request):
+        if seen is not None:
+            seen.append(request)
+        return httpx.Response(200, text="ok")
+
+    transport = fetcher._PinnedTransport(make_inner=lambda: httpx.MockTransport(handler))
+    return fetcher.guarded_client(transport=transport), calls
+
+
+@pytest.mark.asyncio
+async def test_a_name_that_rebinds_to_loopback_after_the_check_is_refused(monkeypatch):
+    seen = []
+    client, calls = _pinned_client(monkeypatch, "93.184.215.14", "127.0.0.1", seen=seen)
+    async with client:
+        with pytest.raises(FetchError, match="local address"):
+            await client.get("https://rebind.example.net/page")
+    assert len(calls) == 2  # the hook's check, then the lookup the connection uses
+    assert seen == []
+
+
+@pytest.mark.asyncio
+async def test_the_request_goes_to_the_checked_address_with_its_name(monkeypatch):
+    seen = []
+    client, _ = _pinned_client(monkeypatch, "93.184.215.14", seen=seen)
+    async with client:
+        resp = await client.get("https://example.org/a?b=1")
+    assert resp.status_code == 200
+    req = seen[0]
+    assert req.url.host == "93.184.215.14"
+    assert req.url.path == "/a" and req.url.query == b"b=1"
+    assert req.headers["host"] == "example.org"
+    assert req.extensions["sni_hostname"] == "example.org"
+    assert str(resp.request.url) == "https://example.org/a?b=1"
+
+
+@pytest.mark.asyncio
+async def test_an_ipv6_answer_is_pinned_in_brackets(monkeypatch):
+    seen = []
+    client, _ = _pinned_client(monkeypatch, "2606:2800:21f:cb07:6820:80da:af6b:8b2c", seen=seen)
+    async with client:
+        await client.get("https://example.org/")
+    assert "[2606:2800:21f:cb07:6820:80da:af6b:8b2c]" in str(seen[0].url)
+
+
+def test_an_environment_proxy_keeps_the_proxy_and_the_check_per_hop(monkeypatch):
+    monkeypatch.setenv("HTTPS_PROXY", "http://172.16.5.20:3128")
+    client = fetcher.guarded_client()
+    assert not isinstance(client._transport, fetcher._PinnedTransport)
+    monkeypatch.delenv("HTTPS_PROXY")
+    for name in ("https_proxy", "HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"):
+        monkeypatch.delenv(name, raising=False)
+    assert isinstance(fetcher.guarded_client()._transport, fetcher._PinnedTransport)

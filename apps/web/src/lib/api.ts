@@ -164,13 +164,21 @@ export async function probeLlm(params?: {
   custom_model?: string
   api_key?: string
 }): Promise<LlmProbeResult> {
-  const query = new URLSearchParams()
-  if (params?.engine) query.set('engine', params.engine)
-  if (params?.custom_base) query.set('custom_base', params.custom_base)
-  if (params?.custom_model) query.set('custom_model', params.custom_model)
-  if (params?.api_key) query.set('api_key', params.api_key)
-  const qs = query.toString() ? `?${query.toString()}` : ''
-  return await get<LlmProbeResult>(`/llm/probe${qs}`, 5000)
+  // POST: a key typed into the settings must not end up in a URL (access logs, history)
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 5000)
+  try {
+    const res = await fetch(`${API_BASE}/llm/probe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params ?? {}),
+      signal: ctrl.signal,
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return (await res.json()) as LlmProbeResult
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 /** Model ids a cloud writer offers right now (asked live, never a built-in list). */

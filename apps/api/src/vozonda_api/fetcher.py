@@ -18,6 +18,7 @@ import re
 import socket
 import subprocess
 import tempfile
+import urllib.request
 from urllib.parse import urlparse
 
 import httpx
@@ -125,14 +126,66 @@ async def _guard_request(request: httpx.Request) -> None:
     await asyncio.to_thread(guard_url, str(request.url))
 
 
+def _public_address(host: str) -> str:
+    """The address to connect to: host's first address, when every address it resolves to is public."""
+    try:
+        infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        raise FetchError(f"cannot resolve host '{host}' (dns)") from None
+    addrs = [info[4][0] for info in infos]
+    if not addrs or any(not ipaddress.ip_address(a).is_global for a in addrs):
+        raise FetchError(f"refusing to fetch local address '{host}'")
+    return addrs[0]
+
+
+class _PinnedTransport(httpx.AsyncBaseTransport):
+    """Connects to the address that was checked, not to a second lookup of the name.
+
+    httpx resolved the host again after guard_url, so a name that answered with a public
+    address for the check and a local one for the connection (DNS rebinding) reached the
+    LAN. The request keeps its Host header, and TLS checks the certificate against the
+    name (sni_hostname). One inner transport per name: a pooled connection to an address
+    never serves another name.
+    """
+
+    def __init__(self, make_inner=httpx.AsyncHTTPTransport) -> None:
+        self._make_inner = make_inner
+        self._inner: dict[str, httpx.AsyncBaseTransport] = {}
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        host = request.url.host
+        addr = await asyncio.to_thread(_public_address, host)
+        pinned = httpx.Request(
+            request.method,
+            request.url.copy_with(host=addr),
+            headers=request.headers,
+            stream=request.stream,
+            extensions={**request.extensions, "sni_hostname": host},
+        )
+        inner = self._inner.get(host)
+        if inner is None:
+            inner = self._inner[host] = self._make_inner()
+        return await inner.handle_async_request(pinned)
+
+    async def aclose(self) -> None:
+        for inner in self._inner.values():
+            await inner.aclose()
+        self._inner.clear()
+
+
 def guarded_client(**kwargs) -> httpx.AsyncClient:
-    """AsyncClient whose every request, redirects included, passes guard_url.
+    """AsyncClient whose every request, redirects included, passes guard_url and then
+    connects to the address that was checked.
 
     guard_url() on the first URL alone let a public page redirect the fetch to
     loopback or the LAN (the local LLM on :30001, cloud metadata addresses).
+    Behind an HTTP proxy from the environment the proxy resolves the name, so the
+    connection cannot be pinned there; the check per hop stays.
     """
     hooks = dict(kwargs.pop("event_hooks", None) or {})
     hooks["request"] = [_guard_request, *hooks.get("request", [])]
+    if "transport" not in kwargs and not (kwargs.get("trust_env", True) and urllib.request.getproxies()):
+        kwargs["transport"] = _PinnedTransport()
     return httpx.AsyncClient(event_hooks=hooks, **kwargs)
 
 
