@@ -748,15 +748,43 @@ async def list_llm_models(engine: str) -> dict:
     return {"engine": engine, "models": models}
 
 
+class LlmProbeIn(BaseModel):
+    engine: str | None = None
+    custom_base: str | None = None
+    custom_model: str | None = None
+    api_key: str | None = None
+
+
+@app.post("/llm/probe", dependencies=[Depends(require_write_auth)])
+async def probe_llm_post(body: LlmProbeIn) -> dict:
+    """The probe for a key typed into the settings: it travels in the body, where no access log keeps it."""
+    return await _probe_llm(body.engine, body.custom_base, body.custom_model, body.api_key)
+
+
 @app.get("/llm/probe", dependencies=[Depends(require_write_auth)])
 async def probe_llm(
     engine: str | None = None,
     custom_base: str | None = None,
     custom_model: str | None = None,
     api_key: str | None = None,
-    authorization: str | None = Header(None),
 ) -> dict:
-    """Probe LLM endpoint dynamically from the server with live metadata (#237)."""
+    """Probe LLM endpoint dynamically from the server with live metadata (#237).
+
+    A key in the URL ends up in access logs and browser history, so GET takes only the mask
+    (the stored key); a real key goes to POST /llm/probe."""
+    from .settings_store import SECRET_MASK
+
+    if api_key and api_key != SECRET_MASK:
+        raise HTTPException(400, "send the api key in the body: POST /llm/probe")
+    return await _probe_llm(engine, custom_base, custom_model, api_key)
+
+
+async def _probe_llm(
+    engine: str | None,
+    custom_base: str | None,
+    custom_model: str | None,
+    api_key: str | None,
+) -> dict:
     import os as _os
 
     from .settings_store import SECRET_MASK, get_setting

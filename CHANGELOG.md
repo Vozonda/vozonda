@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.0] - 2026-10-29
 
 ### Added
 
@@ -13,8 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - settings: per show the index token, the feed guid and a "locked" switch; the default show gets the owner e-mail podcast directories ask for
 - sources: Vozonda finds a source's Lightning address (HTML meta or link tag, the feed's podcast:value lnaddress recipient or podcast:funding link, or a Nostr author's signed profile) and shows it in the source tray, where it can be set or cleared by hand; only Nostr sources ever trigger a relay lookup.
 - sources: a podcast or RSS feed link is accepted as a source; its show notes become the source text (it was refused before).
-- feed: Podping. With a token from podping.cloud, Vozonda tells podcast apps right away that a public feed has a new episode; private feeds, confidential mode and a local base url never send anything (settings, shows & distribution)
+- feed: Podping. With a token from podping.cloud, Vozonda tells podcast apps right away that a public feed has a new episode; private feeds and a local base url never send anything (settings, shows & distribution)
 - voice: a pronunciation dictionary. Names, drug names, citations or product names you add under Settings are spoken as you write them in "Say as"; the script, transcript and captions keep your spelling. A global list plus one per show, applied after it. API: `GET/PUT /pronunciations`, `GET/PUT /shows/{slug}/pronunciations`
+
+### Security
+
+- fetch: every outbound fetch (articles, feeds, covers, music, webhooks) now connects to the address the SSRF check approved. httpx resolved the name a second time, so a host that answered with a public address for the check and a local one for the connection (DNS rebinding) could reach the LAN or the local LLM. Behind an HTTP proxy from the environment the proxy resolves the name, as before
+- settings: the LLM connection test sends a newly typed API key in a POST body (`POST /llm/probe`); it was a URL parameter, which access logs and browser history keep. `GET /llm/probe` now refuses a real key
 
 ## [0.7.6] - 2026-10-25
 

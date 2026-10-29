@@ -53,3 +53,44 @@ def test_probe_with_a_foreign_base_url_needs_the_token(client, monkeypatch):
     monkeypatch.setenv("VOZONDA_TOKEN", "s3cret")
     r = client.get("/llm/probe", params={"engine": "custom", "custom_base": "http://attacker.example/v1"})
     assert r.status_code == 401
+
+
+def test_probe_takes_a_typed_key_in_the_body_not_in_the_url(client, monkeypatch):
+    import vozonda_api.main as main
+
+    seen = {}
+
+    class _Resp:
+        status_code = 200
+
+        def json(self):
+            return {"data": [{"id": "m1"}]}
+
+    class _Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def get(self, url, headers=None):
+            seen["auth"] = (headers or {}).get("Authorization")
+            return _Resp()
+
+    monkeypatch.setattr(main.httpx, "AsyncClient", _Client)
+    body = {"engine": "custom", "custom_base": "http://172.16.5.20:8000/v1", "api_key": "sk-typed-123"}
+    r = client.post("/llm/probe", json=body)
+    assert r.status_code == 200 and r.json()["status"] == "ok"
+    assert seen["auth"] == "Bearer sk-typed-123"
+
+    r = client.get("/llm/probe", params=body)
+    assert r.status_code == 400 and "POST /llm/probe" in r.text
+
+
+def test_probe_post_needs_the_token_like_get(client, monkeypatch):
+    monkeypatch.setenv("VOZONDA_TOKEN", "s3cret")
+    r = client.post("/llm/probe", json={"engine": "custom", "custom_base": "http://attacker.example/v1"})
+    assert r.status_code == 401

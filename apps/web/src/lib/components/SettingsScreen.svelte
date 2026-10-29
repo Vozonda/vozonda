@@ -2248,7 +2248,7 @@
         <div class="sec-head">
           <h3 id="podping-h" class="mono"><Icon name="radio" size={18} /> podping</h3>
         </div>
-        <p class="help">podping tells podcast apps right away that a public feed has a new episode. private feeds are never announced, and nothing is sent in confidential mode or while the base url is a local address. get a token at podping.cloud.</p>
+        <p class="help">podping tells podcast apps right away that a public feed has a new episode. private feeds are never announced, and nothing is sent while the base url is a local address. get a token at podping.cloud.</p>
         <div class="opt">
           <div class="ctl-row">
             <label class="lab mono" for="s-podping">announce new episodes of public feeds</label>
