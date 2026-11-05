@@ -13,7 +13,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-BASE_VERSION = "0.8.0"
+BASE_VERSION = "0.8.1"
 
 
 def _get_git_info() -> tuple[str, int | None, str | None]:
