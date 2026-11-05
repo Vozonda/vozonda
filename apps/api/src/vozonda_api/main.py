@@ -441,6 +441,20 @@ def _write_auth_required() -> bool:
     return access.install_exposed()
 
 
+def _attr(value: str) -> str:
+    """Escape a value for an HTML attribute or text node."""
+    return htmllib.escape(value, quote=True)
+
+
+def _media_path(name: str) -> Path:
+    """MEDIA_DIR / name, refused before the disk is touched when it leaves MEDIA_DIR."""
+    root = MEDIA_DIR.resolve()
+    path = (root / name).resolve()
+    if not path.is_relative_to(root):
+        raise HTTPException(403, "forbidden")
+    return path
+
+
 async def require_write_auth(authorization: str | None = Header(None)) -> None:
     """Mutating endpoints demand the VOZONDA_TOKEN bearer.
 
@@ -2919,7 +2933,7 @@ async def share_page(job_id: str, request: Request):
     <button type="button" class="zap-btn" id="zap-open">&#9889; zap the maker</button>
     <span class="meta">NIP-57 zap via LNURL, signed with NIP-07 or Amber, paid via WebLN</span>
   </div>""" if lightning_address else ""
-    zap_footer = f'<a href="{base}"><strong>Make your own</strong></a> &middot; zap &#9889; {esc_addr}' if lightning_address else ""
+    zap_footer = f'<a href="{_attr(base)}"><strong>Make your own</strong></a> &middot; zap &#9889; {esc_addr}' if lightning_address else ""
     zap_modal = f"""<div class="zap-modal" id="zap-modal" role="dialog" aria-modal="true" aria-labelledby="zap-title">
   <div class="zap-card">
     <div class="zap-head">
@@ -2982,15 +2996,15 @@ async def share_page(job_id: str, request: Request):
     return SHARE_TMPL.format(
         title=htmllib.escape(title),
         desc=htmllib.escape(f"{turns}-turn dialogue · two voices · self-hosted with vozonda"),
-        url=f"{base}/e/{job_id}",
-        img=img_url,
+        url=_attr(f"{base}/e/{job_id}"),
+        img=_attr(img_url),
         # opened with the feed key (a private episode's link in the feed): the player needs it too
-        audio=f"{base}/audio/{job_id}.mp3" + (f"?key={quote(request.query_params['key'])}"
-                                              if request.query_params.get("key") else ""),
+        audio=_attr(f"{base}/audio/{job_id}.mp3" + (f"?key={quote(request.query_params['key'])}"
+                                                    if request.query_params.get("key") else "")),
         meta_line=htmllib.escape(f"{turns} turns · 2 voices"),
         teaser=teaser + disclosure_html,
         source_links=source_links,
-        app_url=base,
+        app_url=_attr(base),
         zap_row=zap_row,
         zap_footer=zap_footer,
         zap_modal=zap_modal,
@@ -3174,16 +3188,16 @@ async def clip_share_page(job_id: str, clip_spec: str, request: Request):
     return CLIP_SHARE_TMPL.format(
         title=htmllib.escape(seo_title),
         desc=htmllib.escape(seo_desc),
-        url=canonical,
-        img=img_url,
+        url=_attr(canonical),
+        img=_attr(img_url),
         og_alt=og_alt,
-        audio=f"{base}/audio/{clip_file}",
+        audio=_attr(f"{base}/audio/{clip_file}"),
         meta_line=htmllib.escape(f"{label} · {turn_end - turn_start + 1} turns · from episode {turns} turns"),
         transcript=transcript,
         turn_start=turn_start,
         turn_end=turn_end,
-        app_url=base,
-        episode_url=f"{base}/e/{job_id}",
+        app_url=_attr(base),
+        episode_url=_attr(f"{base}/e/{job_id}"),
         show_name=htmllib.escape(show_name),
         show_author=htmllib.escape(show_author),
         duration_iso=duration_iso,
@@ -3480,7 +3494,7 @@ async def delete_clip(job_id: str, filename: str) -> dict:
 @app.head("/img/{filename:path}", include_in_schema=False)
 async def serve_image(filename: str, request: Request) -> FileResponse:
     """Serve cover images and other static assets from MEDIA_DIR."""
-    path = MEDIA_DIR / filename
+    path = _media_path(filename)
     if not path.exists() or not path.is_file():
         # Auto-generate template cover if requested for an existing job
         if filename.endswith(("-cover.png", "-og.png")):
@@ -3500,11 +3514,6 @@ async def serve_image(filename: str, request: Request) -> FileResponse:
                 raise HTTPException(404, "image not found") from None
         else:
             raise HTTPException(404, "image not found")
-    # Security: prevent path traversal
-    try:
-        path.resolve().relative_to(MEDIA_DIR.resolve())
-    except ValueError:
-        raise HTTPException(403, "forbidden") from None
     media_type = "image/png" if filename.endswith(".png") else "image/jpeg" if filename.endswith(".jpg") else "image/png"
     return FileResponse(path, media_type=media_type)
 
@@ -3577,12 +3586,12 @@ async def get_srt(job_id: str) -> Response:
 @app.get("/share/{clip_id}", response_class=HTMLResponse)
 async def share_clip(clip_id: str) -> HTMLResponse:
     """Public social share card for sliced audio clips with OpenGraph player tags."""
-    clip_file = MEDIA_DIR / f"{clip_id}.mp3"
+    clip_file = _media_path(f"{clip_id}.mp3")
     if not clip_file.exists():
         raise HTTPException(404, "clip not found")
 
     title = "Vozonda Clip"
-    audio_url = f"/audio/{clip_id}.mp3"
+    audio_url = _attr(f"/audio/{quote(clip_id)}.mp3")
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3618,7 +3627,12 @@ async def share_clip(clip_id: str) -> HTMLResponse:
 @app.post("/watchlist/{wid}/cover", dependencies=[Depends(require_write_auth)])
 async def upload_cover(wid: str, request: Request):
     """Upload a cover image for a watchlist/feed. Accepts multipart form with 'file' field."""
-    import imghdr
+    from .watchlist import get_watchlist, update_watchlist
+
+    try:
+        get_watchlist(wid)
+    except KeyError:
+        raise HTTPException(404, "watchlist not found") from None
 
     form = await request.form()
     file = form.get("file")
@@ -3630,19 +3644,21 @@ async def upload_cover(wid: str, request: Request):
         raise HTTPException(422, "file too large (max 5MB)")
 
     # Validate image
-    img_type = imghdr.what(None, data)
-    if img_type not in ("png", "jpeg", "jpg"):
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        img_type = "png"
+    elif data.startswith(b"\xff\xd8\xff"):
+        img_type = "jpeg"
+    else:
         raise HTTPException(422, "only PNG and JPEG allowed")
 
     # Generate filename
     import uuid
     ext = "png" if img_type == "png" else "jpg"
     filename = f"watchlist-{wid}-cover.{uuid.uuid4().hex[:8]}.{ext}"
-    dest = MEDIA_DIR / filename
+    dest = _media_path(filename)
     dest.write_bytes(data)
 
     # Update watchlist with cover image
-    from .watchlist import update_watchlist
     try:
         update_watchlist(wid, cover_image=filename)
     except KeyError:
@@ -3668,7 +3684,7 @@ async def put_audio_peaks(job_id: str, request: Request):
     except (TypeError, ValueError):
         raise HTTPException(422, "peaks must be numeric") from None
     # store alongside mp3; allow overwriting (idempotent cache)
-    path = MEDIA_DIR / f"{job_id}.peaks.json"
+    path = _media_path(f"{job_id}.peaks.json")
     path.parent.mkdir(parents=True, exist_ok=True)
     # preserve supplied duration/bars if present, else just peaks
     payload: dict = {"peaks": clean}
@@ -3756,7 +3772,10 @@ async def reset_music_endpoint(request: Request) -> dict:
     except Exception:
         logger.debug("reset music body parse failed, using kind=all", exc_info=True)
 
-    return reset_music(kind=kind)
+    try:
+        return reset_music(kind=kind)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
 
 
 @app.get("/music/{kind}.mp3")

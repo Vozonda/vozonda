@@ -34,7 +34,7 @@ from .length import (
 from .nostr_orchestrator import publish_job as _publish_job
 from .podping import ping_job as _podping_job
 from .providers import HF_HOME, LOCAL_ONLY, MEDIA_DIR, TTS_PY, llm_chain, tts_fallbacks
-from .providers.script import script_call, with_thinking_off
+from .providers.script import is_anthropic_base, script_call, with_thinking_off
 from .rhythm import rhythm_problems_for
 from .styles import (
     SCRIPT_PARAMS,
@@ -1708,7 +1708,7 @@ async def _chat_completion_once(prov: dict, prompt: str, max_tokens: int) -> str
         return await opencode_run(prov["model"], prompt)
     base = prov["base"].rstrip("/")
     key = prov.get("key") or ""
-    is_anthropic = "api.anthropic.com" in base
+    is_anthropic = is_anthropic_base(base)
     if is_anthropic and base.endswith("/v1"):
         base = base[: -len("/v1")]  # the code appends /v1/messages itself
     async with httpx.AsyncClient(timeout=600) as c:

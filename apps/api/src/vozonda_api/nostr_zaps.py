@@ -26,6 +26,7 @@ LNURL_TAG = "payRequest"
 
 _HEX64_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 _HEX128_RE = re.compile(r"^[0-9a-fA-F]{128}$")
+_LUD16_MAX_LEN = 320
 _LUD16_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 # BOLT11 is bech32: ln + (bc|tb|bcrt) + amount? + 1 + data. Minimal validation.
 _BOLT11_RE = re.compile(r"^ln(bc|tb|bcrt)[0-9a-z]+$", re.IGNORECASE)
@@ -37,7 +38,7 @@ _BOLT11_RE = re.compile(r"^ln(bc|tb|bcrt)[0-9a-z]+$", re.IGNORECASE)
 def parse_lightning_address(address: str) -> tuple[str, str]:
     """Parse 'user@domain' into (user, domain). Raises ValueError on bad format."""
     addr = address.strip()
-    if not _LUD16_RE.match(addr):
+    if len(addr) > _LUD16_MAX_LEN or not _LUD16_RE.match(addr):
         raise ValueError(f"invalid lightning address: {addr!r}")
     user, domain = addr.split("@", 1)
     if not user or not domain or "." not in domain:

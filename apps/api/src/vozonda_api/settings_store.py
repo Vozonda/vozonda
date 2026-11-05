@@ -356,6 +356,10 @@ def _normalize_llm_engine(value: str) -> str:
     return v
 _MODEL_ID = re.compile(r"[A-Za-z0-9._-]+(/[A-Za-z0-9._:-]+)+")
 
+
+def _is_model_id(value: str) -> bool:
+    return len(value) <= 256 and _MODEL_ID.fullmatch(value) is not None
+
 # display names must stay short: they end up in transcript labels and aria text
 _NAME_KEYS = {"voice.a.name", "voice.b.name", "voice.c.name"}
 _NAME_MAX = 24
@@ -406,13 +410,13 @@ def _validate(key: str, value: str) -> str:
         return v
     if key == "llm.nim_model":
         v = value.strip()
-        if v and not _MODEL_ID.fullmatch(v):
+        if v and not _is_model_id(v):
             raise ValueError(f"llm.nim_model must look like vendor/model, got {value!r}")
         return v
     if key == "llm.opencode_models":
         # ordered list: the first is tried first, the rest are fallbacks
         ids = [m for m in re.split(r"[,\s]+", value.strip()) if m]
-        bad = [m for m in ids if not _MODEL_ID.fullmatch(m)]
+        bad = [m for m in ids if not _is_model_id(m)]
         if bad:
             raise ValueError(f"llm.opencode_models expects provider/model ids, got {bad}")
         return ", ".join(ids)
