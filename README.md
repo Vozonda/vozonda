@@ -13,6 +13,7 @@
   <a href="https://github.com/Vozonda/vozonda/actions/workflows/ci.yml"><img src="https://github.com/Vozonda/vozonda/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/Vozonda/vozonda/releases"><img src="https://img.shields.io/github/v/release/Vozonda/vozonda?sort=semver" alt="Release"></a>
   <a href="https://pypi.org/project/vozonda/"><img src="https://img.shields.io/pypi/v/vozonda.svg" alt="PyPI"></a>
+  <a href="https://www.npmjs.com/package/vozonda"><img src="https://img.shields.io/npm/v/vozonda.svg" alt="npm version"></a>
   <a href="https://github.com/Vozonda/vozonda/pkgs/container/vozonda"><img src="https://img.shields.io/badge/docker-ghcr.io-238636?logo=docker&logoColor=white" alt="GHCR"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-4a7300" alt="MIT licence"></a>
   <a href="https://vozonda.com"><img src="https://img.shields.io/badge/website-vozonda.com-1a1815" alt="Website"></a>
