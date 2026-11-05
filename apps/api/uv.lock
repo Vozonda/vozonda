@@ -3543,7 +3543,7 @@ wheels = [
 
 [[package]]
 name = "vozonda"
-version = "0.8.1"
+version = "0.9.0"
 source = { editable = "." }
 dependencies = [
     { name = "coincurve", marker = "sys_platform == 'darwin' or sys_platform == 'linux' or sys_platform == 'win32'" },
