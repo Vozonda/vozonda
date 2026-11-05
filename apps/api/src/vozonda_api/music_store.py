@@ -216,6 +216,8 @@ def get_music_status() -> dict[str, Any]:
 
 def reset_music(kind: str = "all") -> dict[str, Any]:
     """Remove imported custom music files, reverting to procedural jingles."""
+    if kind not in ("all", "intro", "outro"):
+        raise ValueError("kind must be 'all', 'intro' or 'outro'")
     music_dir = get_music_dir()
     removed: list[str] = []
 

@@ -19,6 +19,7 @@ Usage from pipeline (after nemo wires it into _script()):
 import json
 import re
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -31,6 +32,11 @@ META = PluginMeta(
     permissions=frozenset({Permission.NETWORK}),
     ui_badge="streaming JSON",
 )
+
+
+def is_anthropic_base(base: str) -> bool:
+    """True when the base URL's host is the Anthropic API itself."""
+    return (urlsplit(base).hostname or "").lower() == "api.anthropic.com"
 
 
 def _is_local_llm(base: str) -> bool:
@@ -201,7 +207,7 @@ async def script_call(
     if base == OPENCODE_BASE:
         return _parse_script_content(await opencode_run(model, prompt, timeout=timeout))
 
-    is_anthropic = "api.anthropic.com" in base
+    is_anthropic = is_anthropic_base(base)
     if is_anthropic and base.endswith("/v1"):
         base = base[: -len("/v1")]
 
@@ -348,7 +354,7 @@ async def script_call_nonstreaming(
 
     Default max_tokens=16384 to reserve headroom for Qwen3.6 reasoning tokens.
     """
-    is_anthropic = "api.anthropic.com" in base
+    is_anthropic = is_anthropic_base(base)
     if is_anthropic and base.endswith("/v1"):
         base = base[: -len("/v1")]
 

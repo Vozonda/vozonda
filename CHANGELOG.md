@@ -9,7 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- api: share pages escape every URL they print, `/img` and the peaks upload refuse paths outside the media directory before touching the disk, and `/music/reset` accepts only `all`, `intro` or `outro`.
+- api: Lightning addresses and model ids have a length limit, and the Anthropic API format is chosen by comparing the host instead of searching the URL.
+- ci: the CI workflow runs with read-only repository access.
 - deps: msgpack 1.2.1 to 1.2.4 (GHSA-j586-36cw-2gc2, a memory leak in the C extension when `strict_map_key` rejects a key; it comes in through librosa, and Vozonda decodes no msgpack from outside)
+
+### Fixed
+
+- api: uploading a feed cover works on Python 3.13 (`imghdr` no longer exists), and an upload for an unknown feed leaves no file behind.
 
 ## [0.8.0] - 2026-10-29
 
