@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- docker: the container images are built for arm64 as well as amd64.
+
+### Changed
+
+- readme: npm is no longer listed as a way to install. The npm package only holds the name and installs no code.
+
 ## [0.8.1] - 2026-11-05
 
 ### Security
