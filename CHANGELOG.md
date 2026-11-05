@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- docker: the container images are built for arm64 as well as amd64.
+- release: every release tag publishes the npm package, so it stays on the current version.
+
+### Changed
+
+- readme: `npm install vozonda` is no longer listed as a way to install, because the npm package installs no code. It stays as a pointer to the app.
+
 ## [0.8.1] - 2026-11-05
 
 ### Security
